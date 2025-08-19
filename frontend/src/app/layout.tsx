@@ -7,16 +7,14 @@ export const metadata: Metadata = {
   description: 'Data science art · Heat island live monitoring',
 };
 
-export default function RootLayout({ 
-  children 
-}: { 
-  children: React.ReactNode 
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-Hant" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <div className="noise-overlay" />
+        <div className="relative z-10 container ">
           {children}
+        </div>
       </body>
     </html>
   );
