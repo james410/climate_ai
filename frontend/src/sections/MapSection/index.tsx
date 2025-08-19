@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
-import { RotateCcw } from 'lucide-react';
 import type { Feature, FeatureCollection, GeoJsonProperties, Polygon, MultiPolygon } from 'geojson';
 import L, { GeoJSON as LGeoJSON, LatLng, LeafletMouseEvent, Layer } from 'leaflet';
-
 import 'leaflet/dist/leaflet.css';
 
 // ✅ 新增：給每個格子一個穩定 ID（優先用 properties.id，否則用 row_id-column_id）
@@ -65,6 +63,10 @@ export default function MapSection() {
   const [mounted, setMounted] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // 即使在 SSR 階段也要調用這些 hooks
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -80,19 +82,7 @@ export default function MapSection() {
   const titleScale = useTransform(
     scrollYProgress,
     [0.1, 0.3, 0.4, 0.6],
-    [0.8, 1, 0.3, 0.3]
-  );
-
-  const titleX = useTransform(
-    scrollYProgress,
-    [0.1, 0.4, 0.6],
-    [0, 0, 350]
-  );
-
-  const titleY = useTransform(
-    scrollYProgress,
-    [0.1, 0.4, 0.6],
-    [0, 0, -280]
+    [0.8, 1, 0.9, 0.9]
   );
 
   const descriptionOpacity = useTransform(
@@ -462,26 +452,36 @@ export default function MapSection() {
         </motion.div>
         {/* </div> */}
 
-        {/* 模式切換（保留樣式，替換為兩種模式） */}
-        <div className="flex justify-center mb-8 gap-4">
-          <button
-            onClick={() => setMode('time')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${mode === 'time'
-              ? 'bg-green-500 text-black'
-              : 'text-gray-400 border border-gray-700 hover:text-white'
-              }`}
+        {/* 標題層 */}
+        <div className="sticky top-0 h-screen flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, x: 0, y: 0 }}
+            style={{ 
+              opacity: mounted ? titleOpacity : 0, 
+              scale: mounted ? titleScale : 0.8
+            }}
+            className="text-center px-4 w-full flex flex-col items-center justify-center"
           >
-            理解雙北十年的溫度脈動
-          </button>
-          <button
-            onClick={() => setMode('population')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${mode === 'population'
-              ? 'bg-green-500 text-black'
-              : 'text-gray-400 border border-gray-700 hover:text-white'
-              }`}
-          >
-            以植物為核心預測未來場景
-          </button>
+            <h2
+              className="font-display text-white tracking-wider text-center"
+              style={{ 
+                fontSize: 'clamp(1.2rem, 6vw, 4rem)',
+                lineHeight: '1.2'
+              }}
+            >
+              Heat Island Model
+            </h2>
+            <motion.p
+              className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4"
+              style={{ 
+                opacity: mounted ? descriptionOpacity : 0,
+                fontSize: 'clamp(0.8rem, 2vw, 1.8rem)',
+                lineHeight: '1.4'
+              }}
+            >
+              理解雙北十年的溫度脈動 ↔ 以植物為核心預測未來場景
+            </motion.p>
+          </motion.div>
         </div>
 
         {/* 地圖容器 */}

@@ -1,7 +1,6 @@
 // src/app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
-import ClientLayoutWrapper from '@/ClientLayoutWrapper';
 
 export const metadata: Metadata = {
   title: 'VERDISLE – Islands of Heat, Cities of Change',
@@ -17,9 +16,7 @@ export default function RootLayout({
     <html lang="zh-Hant" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <div className="noise-overlay" />
-        <ClientLayoutWrapper>
           {children}
-        </ClientLayoutWrapper>
       </body>
     </html>
   );
