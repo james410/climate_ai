@@ -20,13 +20,32 @@ async function fetchJSON<T = any>(path: string, init?: RequestInit): Promise<T> 
   return res.json();
 }
 
-/** 依你的 API 文件建立呼叫函式（歷史 / 預測） */
-export const ClimateAPI = {
-  // 歷史資料
-  getHistory: (year: number, month: number, columnId: number, rowId: number) =>
-    fetchJSON(`/data/history/${year}/${month}/${columnId}/${rowId}`),
+export type ClimatePayload = {
+  apparent_temperatures?: { current?: number; high?: number; low?: number };
+  temperatures?: { current?: number; high?: number; low?: number };
+  predicted_temperatures?: { current?: number; high?: number; low?: number };
+  weather_conditions?: { humidity?: number; pressure?: number; rain?: number; solar?: number; wind?: number };
+  location?: { column_id?: number; row_id?: number; latitude?: number; longitude?: number; elevation?: number };
+  metadata?: { id?: number; year?: number; month?: number; vegetation?: number; water_body?: number };
+};
 
-  // 預測資料（2025–2035）
-  getPrediction: (year: number, month: number, columnId: number, rowId: number) =>
-    fetchJSON(`/data/prediction/${year}/${month}/${columnId}/${rowId}`),
+// 封裝你文件裡的 5 個端點
+export const ClimateAPI = {
+  history: (y: number, m: number, col: number, row: number) =>
+    fetchJSON<ClimatePayload>(`/data/${y}/${m}/${col}+${row}`),
+
+  ndviScenario: (m: number, vegetation01: number, col: number, row: number) =>
+    fetchJSON<ClimatePayload>(`/NDVI/${m}/${vegetation01}/${col}+${row}`),
+
+  annualWeather: (kind: "humidity"|"pressure"|"rain"|"solar"|"wind", y: number, col: number, row: number) =>
+    fetchJSON<Record<string, number>>(`/annual/${kind}/${y}/${col}+${row}`),
+
+  annualTemp: (y: number, col: number, row: number) =>
+    fetchJSON<Record<string, Record<string, number>>>(`/annual/temp/${y}/${col}+${row}`),
+
+  formap: (type:
+      "Temperature"|"Low_Temp"|"High_Temp"|
+      "Apparent_Temperature"|"Apparent_Temperature_High"|"Apparent_Temperature_Low",
+      y: number, m: number) =>
+    fetchJSON<Record<string, Record<string, number>>>(`/formap/${type}/${y}/${m}`),
 };

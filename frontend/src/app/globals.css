@@ -5,7 +5,8 @@
 
 @font-face {
   font-family: 'DroidSansMono';
-  src: url('/Users/uminoko/Library/Fonts/DroidSansMono.ttf') format('ttf');
+  src: url('/fonts/DroidSansMono.ttf') format('truetype');
+  font-display: swap;
 }
 
 

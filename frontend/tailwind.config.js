@@ -12,6 +12,7 @@ module.exports = {
     './src/app/**/*.{js,jsx}',
     './src/pages/**/*.{js,jsx}',
     './src/components/**/*.{js,jsx}',
+    'src/**/*.{js,ts,jsx,tsx}'
   ],
   // 強制保留這些 class（即使其它頁面沒使用）
   safelist: [

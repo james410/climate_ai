@@ -6,46 +6,51 @@ import type { Feature, FeatureCollection, GeoJsonProperties, Polygon, MultiPolyg
 import L, { GeoJSON as LGeoJSON, LatLng, LeafletMouseEvent, Layer } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// ✅ 新增：給每個格子一個穩定 ID（優先用 properties.id，否則用 row_id-column_id）
+// =================== 工具 & 型別 ===================
+
+type GridFeature = Feature<Polygon | MultiPolygon, GeoJsonProperties & Record<string, unknown>>;
+
+const HOVER_YELLOW = '#FFD54A';
+const DEFAULT_STROKE = '#c9c9c9ff';
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+class NoDataError extends Error {
+  constructor(msg = '查無資料') {
+    super(msg);
+    this.name = 'NoDataError';
+  }
+}
+
+async function fetchJSON<T = any>(url: string): Promise<T> {
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  const text = await res.text();
+  if (!res.ok) {
+    if (res.status === 404) {
+      try {
+        const j = JSON.parse(text);
+        throw new NoDataError(j?.error || '查無資料');
+      } catch {
+        throw new NoDataError('查無資料');
+      }
+    }
+    throw new Error(`HTTP ${res.status} ${res.statusText}: ${text.slice(0, 200)}`);
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error('Invalid JSON from server');
+  }
+}
+
+const USE_PROXY = process.env.NEXT_PUBLIC_USE_PROXY === '1';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5000';
+const getBases = () => (USE_PROXY ? ['/api'] : [API_BASE]);
+const to01 = (percent: number) => Math.max(0, Math.min(100, percent)) / 100;
+
 function getFeatureId(f: GridFeature) {
   const p = (f?.properties || {}) as any;
   return p.id ?? `${p.row_id ?? 'r'}-${p.column_id ?? 'c'}`;
 }
-
-// ✅ 新增：樣式常數
-const HOVER_YELLOW = '#FFD54A'; // 滑鼠移入用的顏色
-const DEFAULT_STROKE = '#c9c9c9ff'; // 一般邊框色
-// 顏色定義
-// ====== Add: helpers for temp → percentile → color ======
-function toMonthTemp(feature: GridFeature, m: number): number | undefined {
-  return getMonthTemp(feature, m);
-}
-function computeMinMax(features: GridFeature[], m: number) {
-  let min = Infinity, max = -Infinity;
-  for (const f of features) {
-    const v = toMonthTemp(f, m);
-    if (typeof v === 'number') {
-      if (v < min) min = v;
-      if (v > max) max = v;
-    }
-  }
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return { min: 0, max: 1 };
-  if (min === max) return { min: min - 0.5, max: max + 0.5 }; // 避免除以 0
-  return { min, max };
-}
-function toPercent(v: number, min: number, max: number) {
-  return Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
-}
-function colorByPercent(p: number) {
-  // 低 → 高：0—24 / 25—49 / 50—74 / 75—100
-  if (p < 25) return '#EAB090';   // 淺桃橘
-  if (p < 50) return '#E27777';   // 葡萄柚橙
-  if (p < 75) return '#AE567D';   // 玫瑰紅
-  return '#724B80';               // 深紫
-}
-
-// ========== Types ==========
-type GridFeature = Feature<Polygon | MultiPolygon, GeoJsonProperties & Record<string, unknown>>;
 
 function getMonthTemp(feature: GridFeature | null, m: number): number | undefined {
   if (!feature) return undefined;
@@ -58,12 +63,47 @@ function getMonthTemp(feature: GridFeature | null, m: number): number | undefine
   return undefined;
 }
 
+function computeMinMax(features: GridFeature[], m: number) {
+  let min = Infinity, max = -Infinity;
+  for (const f of features) {
+    const v = getMonthTemp(f, m);
+    if (typeof v === 'number') {
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return { min: 0, max: 1 };
+  if (min === max) return { min: min - 0.5, max: max + 0.5 };
+  return { min, max };
+}
+
+function toPercent(v: number, min: number, max: number) {
+  return Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
+}
+
+function colorByPercent(p: number) {
+  if (p < 25) return '#EAB090';
+  if (p < 50) return '#E27777';
+  if (p < 75) return '#AE567D';
+  return '#724B80';
+}
+
+// 後端回傳
+type ClimatePayload = {
+  metadata?: { year?: number; month?: number; vegetation?: number };
+  location?: { column_id?: number; row_id?: number; latitude?: number; longitude?: number };
+  temperatures?: { current?: number; high?: number; low?: number };
+  apparent_temperatures?: { current?: number; high?: number; low?: number };
+  predicted_temperatures?: { current?: number; high?: number; low?: number };
+} | Record<string, any>;
+
+// =================== 主頁面 ===================
 export default function MapSection() {
-  // ✅ 所有 Hooks 都在頂層，在任何條件性返回之前
+  // 所有 Hooks 都在頂層，在任何條件性返回之前
   const [mounted, setMounted] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
+  useEffect(() => {
     setMounted(true);
   }, []);
 
@@ -91,140 +131,78 @@ export default function MapSection() {
     [0, 1, 1, 0]
   );
 
-
-  const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
-
-  // ✅ 新增：用 ref 同步最新的 selectedCellId，避免事件閉包讀到舊值
-
-
-
-  const selectedIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    selectedIdRef.current = selectedCellId;
-  }, [selectedCellId]);
-
-  // 放「選取的黑色外框」的圖層
-  const selectionLayerRef = useRef<L.FeatureGroup | null>(null);
-
-
-  // ===== UI State =====
+  // UI 狀態
   const [mode, setMode] = useState<'population' | 'time'>('time');
   const [veg, setVeg] = useState<number>(50);
-  const [month, setMonth] = useState<number>(1);
+  const [month, setMonth] = useState<number>(10);
   const [pastYear, setPastYear] = useState<number>(2013);
   const [futureYear, setFutureYear] = useState<number>(2025);
   const [activeSlider, setActiveSlider] = useState<'past' | 'future'>('past');
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [currentFeature, setCurrentFeature] = useState<GridFeature | null>(null);
-  const [hintHidden, setHintHidden] = useState<boolean>(false);
-  const [centerLL, setCenterLL] = useState<LatLng | null>(null);
-  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection | null>(null);
 
-  // 讓事件處理器永遠讀到「最新的月份、資料、選取狀態」
-  const monthRef = useRef(month);
-  useEffect(() => { monthRef.current = month; }, [month]);
-
-  const geoJsonDataRef = useRef<FeatureCollection | null>(null);
-  useEffect(() => { geoJsonDataRef.current = geoJsonData; }, [geoJsonData]);
-
-
-  // ===== Effects / visibility =====
-  //const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: false });
-
-  // ===== Leaflet Refs =====
+  // 地圖 & Grid
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const gridLayerRef = useRef<LGeoJSON | null>(null);
+  const selectionLayerRef = useRef<L.FeatureGroup | null>(null);
+  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection | null>(null);
 
-  // ===== Derived values =====
+  // 選格子
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentFeature, setCurrentFeature] = useState<GridFeature | null>(null);
+  const [centerLL, setCenterLL] = useState<LatLng | null>(null);
+  const [rowId, setRowId] = useState<number | null>(null);
+  const [colId, setColId] = useState<number | null>(null);
+  const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
+
+  // API 狀態
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiData, setApiData] = useState<ClimatePayload | null>(null);
+  const [triedUrls, setTriedUrls] = useState<string[]>([]);
+
+  // 著色 re-render 幫手
+  const geoJsonDataRef = useRef<FeatureCollection | null>(null);
+  const monthRef = useRef(month);
+  const selectedIdRef = useRef<string | null>(null);
+  const applyLayerColorsRef = useRef<() => void>(() => {});
+
+  useEffect(() => { geoJsonDataRef.current = geoJsonData; }, [geoJsonData]);
+  useEffect(() => { monthRef.current = month; }, [month]);
+  useEffect(() => { selectedIdRef.current = selectedCellId; }, [selectedCellId]);
+
+  // 基準（GeoJSON）
   const baseTemp = useMemo(() => getMonthTemp(currentFeature, month), [currentFeature, month]);
   const vegPredicted = useMemo(() => {
     if (typeof baseTemp !== 'number') return undefined;
-    // 簡單示意：植被越高 -> 降溫（±2°C 範圍）
     const predicted = baseTemp + (2 - 4 * (veg / 100));
     return Number.isFinite(predicted) ? Number(predicted.toFixed(1)) : undefined;
   }, [baseTemp, veg]);
   const timePredicted = useMemo(() => {
     const t = getMonthTemp(currentFeature, month);
     if (typeof t !== 'number') return undefined;
-
-    // 根據選擇的時間範圍計算預測溫度
     let yearModifier = 0;
-    if (activeSlider === 'past') {
-      // 過去年份：2013-2023，溫度變化 -1°C 到 +1°C
-      yearModifier = ((pastYear - 2013) / 10) * 2 - 1; // 線性變化 -1°C 到 +1°C
-    } else {
-      // 未來年份：2025-2035，溫度上升 +1°C 到 +3°C
-      yearModifier = 1 + ((futureYear - 2025) / 10) * 2; // 線性變化 +1°C 到 +3°C
-    }
-
+    if (activeSlider === 'past') yearModifier = ((pastYear - 2013) / 10) * 2 - 1;
+    else yearModifier = 1 + ((futureYear - 2025) / 10) * 2;
     const predicted = t + yearModifier;
     return Number.isFinite(predicted) ? Number(predicted.toFixed(1)) : undefined;
   }, [currentFeature, month, pastYear, futureYear, activeSlider]);
 
-  // ===== 計算溫度範圍並更新圖層顏色 =====
-  const updateLayerColors = useMemo(() => {
-    if (!geoJsonData || !gridLayerRef.current) return;
-
-    const features = geoJsonData.features as GridFeature[];
-    const { min, max } = computeMinMax(features, month);
-
-    gridLayerRef.current.eachLayer((layer: any) => {
-      const feature = layer.feature as GridFeature;
-      const temp = toMonthTemp(feature, month);
-
-      if (typeof temp === 'number') {
-        const percent = toPercent(temp, min, max);
-        const color = colorByPercent(percent);
-
-        layer.setStyle({
-          color: '#f59e0b',
-          weight: 2,
-          fillColor: color,
-          fillOpacity: 0.7
-        });
-      } else {
-        // 沒有溫度資料的格子設為透明
-        layer.setStyle({
-          color: '#f59e0b',
-          weight: 2,
-          fillColor: 'transparent',
-          fillOpacity: 0
-        });
-      }
-    });
-  }, [geoJsonData, month]);
-
-  // 執行顏色更新
-  useEffect(() => {
-    //applyLayerColors(); // ✅ 真的呼叫
-    applyLayerColorsRef.current();
-  }, [geoJsonData, month, selectedCellId]);
-
-  // 提供給事件回調呼叫的「最新」上色函式
-
-  const applyLayerColorsRef = useRef<() => void>(() => { });
+  // 著色器：依 GeoJSON 的當月欄位上色（不覆蓋網格來源）
   useEffect(() => {
     applyLayerColorsRef.current = () => {
       const data = geoJsonDataRef.current;
       const grid = gridLayerRef.current;
       const m = monthRef.current;
       if (!data || !grid) return;
-
       const features = data.features as GridFeature[];
       const { min, max } = computeMinMax(features, m);
-
       grid.eachLayer((layer: any) => {
         const f = layer.feature as GridFeature;
-        const temp = toMonthTemp(f, m);
+        const temp = getMonthTemp(f, m);
         const hasTemp = typeof temp === 'number';
-
         const percent = hasTemp ? toPercent(temp as number, min, max) : undefined;
         const fillColor = hasTemp ? colorByPercent(percent as number) : 'transparent';
-
         const isSelected = !!(selectedIdRef.current && getFeatureId(f) === selectedIdRef.current);
-
         (layer as any).setStyle({
           fillColor,
           fillOpacity: hasTemp ? 0.6 : 0.1,
@@ -233,64 +211,44 @@ export default function MapSection() {
         });
       });
     };
-  });
+  }, []);
+  useEffect(() => { applyLayerColorsRef.current(); }, [geoJsonData, month, selectedCellId]);
 
-
-
-
-  const openSidebar = () => {
-    setSidebarOpen(true);
-    setHintHidden(true);
-  };
-  const closeSidebar = () => {
-    setSidebarOpen(false);
-    setCurrentFeature(null);
-    setCenterLL(null);
-    setHintHidden(false);
-
-    selectionLayerRef.current?.clearLayers(); // 移除黑色外框
-    setSelectedCellId(null);
-  };
-
-  // ===== Init Leaflet map / load GeoJSON =====
+  // 初始化地圖 + 載入 GeoJSON
   useEffect(() => {
-    if (mapInstanceRef.current) return;        // 保險：已建就不再建
-    const el = mapRef.current;
-    if (!el) return;                           // 容器尚未掛載
+    if (mapInstanceRef.current) return;
+    const el = mapRef.current; if (!el) return;
 
-    // 延後到下一個 frame，確保 DOM/尺寸都 ready
     const raf = requestAnimationFrame(() => {
-      // 二次檢查（避免在 raf 期間被卸載）
       if (mapInstanceRef.current || !mapRef.current) return;
 
-
       const TPE_BOUNDS = L.latLngBounds(
-        [24.50, 120.85], // 南西角 (lat, lng)
-        [25.40, 122.35]  // 北東角
+        [24.50, 120.85],
+        [25.40, 122.35]
       );
 
       const map = L.map(el, {
-        center: [25.0200, 121.5845], zoom: 12, minZoom: 9, maxBounds: TPE_BOUNDS.pad(0.02), // 可平移範圍（pad 讓邊界稍微寬一點點）
-        maxBoundsViscosity: 1.0,         // 黏性=1 會像碰到牆壁一樣推不出去
+        center: [25.0200, 121.5845], zoom: 12, minZoom: 9,
+        maxBounds: TPE_BOUNDS.pad(0.02),
+        maxBoundsViscosity: 1.0,
         worldCopyJump: false
       });
+
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors',
       }).addTo(map);
 
-
       mapInstanceRef.current = map;
 
-      // === ➊ 建立一個 pane 專放陰影，放在底圖上方、圖層上方之下 ===
+      // 建立陰影層
       map.createPane('hillshadePane');
       const hp = map.getPane('hillshadePane')!;
-      hp.style.zIndex = '350';                // tilePane(200) < 這個(350) < overlayPane(400)
-      hp.style.pointerEvents = 'none';        // 不擋滑鼠
-      hp.style.mixBlendMode = 'multiply';     // 與底圖相乘，像真實陰影
+      hp.style.zIndex = '350';
+      hp.style.pointerEvents = 'none';
+      hp.style.mixBlendMode = 'multiply';
       hp.style.opacity = '0.85';
 
-      // === ➋ 加入 Esri 世界陰影瓦片（免運算、立刻可用）===
       L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
         {
@@ -300,127 +258,79 @@ export default function MapSection() {
         }
       ).addTo(map);
 
-      // 建立一個最高層的 pane 專門放選取框
+      // 建立選取框 pane
       map.createPane('selectedPane');
       const sp = map.getPane('selectedPane')!;
-      sp.style.zIndex = '1000';           // 比 overlayPane(400) 高很多
-      sp.style.pointerEvents = 'none';    // 不攔截滑鼠事件
+      sp.style.zIndex = '1000';
+      sp.style.pointerEvents = 'none';
 
-      // 建立一個 FeatureGroup 來放「黑色外框」，掛在 selectedPane
       selectionLayerRef.current = L.featureGroup([], { pane: 'selectedPane' }).addTo(map);
 
       fetch('/data/grid.geojson')
         .then(r => r.json())
         .then((geojson: FeatureCollection) => {
-          setGeoJsonData(geojson); // 儲存 GeoJSON 資料
-
+          setGeoJsonData(geojson);
           const features = geojson.features as GridFeature[];
-          const { min, max } = computeMinMax(features, 1); // 預設使用第1個月
-
+          const { min, max } = computeMinMax(features, 1);
           const gridLayer = L.geoJSON(geojson as any, {
             style: (feature: any) => {
-              const temp = toMonthTemp(feature, 1); // 預設使用第1個月
-
+              const temp = getMonthTemp(feature, 1);
               if (typeof temp === 'number') {
                 const percent = toPercent(temp, min, max);
                 const color = colorByPercent(percent);
-
-                return {
-                  color: '#f59e0b',
-                  weight: 2,
-                  fillColor: color,
-                  fillOpacity: 0.7
-                };
-              } else {
-                return {
-                  color: '#f59e0b',
-                  weight: 2,
-                  fillColor: 'transparent',
-                  fillOpacity: 0
-                };
+                return { color: '#f59e0b', weight: 2, fillColor: color, fillOpacity: 0.7 };
               }
+              return { color: '#f59e0b', weight: 2, fillColor: 'transparent', fillOpacity: 0 };
             },
             onEachFeature: (feature: any, layer: any) => {
-
               layer.on('click', (e: any) => {
-                const lf = e.target?.feature;
-                if (!lf) return;
-                // ✅ 新增：記錄目前選取的格子 ID
+                const lf = e.target?.feature as GridFeature; if (!lf) return;
+                const p = (lf.properties || {}) as any;
+                setRowId(Number(p.row_id ?? null));
+                setColId(Number(p.column_id ?? null));
                 const id = getFeatureId(lf);
                 setSelectedCellId(id);
-
                 setCurrentFeature(lf);
-                try {
-                  const b = e.target.getBounds?.();
-                  if (b) {
-                    setCenterLL(b.getCenter());
-                    map.fitBounds(b, { maxZoom: 14, animate: true });
-                  }
-                } catch { }
-                openSidebar();
+                try { 
+                  const b = e.target.getBounds?.(); 
+                  if (b) { 
+                    setCenterLL(b.getCenter()); 
+                    map.fitBounds(b, { maxZoom: 14, animate: true }); 
+                  } 
+                } catch {}
+                setSidebarOpen(true);
 
-                // 1) 清掉上一個選取框
                 selectionLayerRef.current?.clearLayers();
-
-                // 2) 以同一個 feature 畫「只有外框」的圖層到 selectedPane
-                L.geoJSON(lf as any, {
-                  pane: 'selectedPane',
-                  style: {
-                    color: 'black',
-                    weight: 2,
-                    fill: false,         // 很重要：不要填色，避免遮住底下配色
-                    fillOpacity: 0,
-                    opacity: 1,
-                    interactive: false,  // 不吃事件，滑鼠事件仍由底層格子處理
-                  },
+                L.geoJSON(lf as any, { 
+                  pane: 'selectedPane', 
+                  style: { 
+                    color: 'black', 
+                    weight: 2, 
+                    fill: false, 
+                    opacity: 1, 
+                    interactive: false 
+                  } 
                 }).addTo(selectionLayerRef.current!);
-
+                applyLayerColorsRef.current();
               });
-
-              // ✅ 新增：點擊時設定選取的格子 ID（不取代你原本 click，而是再加一個）
-              layer.on('click', () => {
-                try {
-                  const fid = getFeatureId(layer.feature as GridFeature);
-                  setSelectedCellId(fid);
-                } catch { }
-                applyLayerColorsRef.current();; // 立刻反映黑框
+              layer.on('mouseover', (e: any) => {
+                const lf = layer.feature as GridFeature; 
+                const fid = getFeatureId(lf);
+                if (selectedIdRef.current && fid === selectedIdRef.current) return;
+                (e.target as L.Path).setStyle({ fillColor: HOVER_YELLOW, fillOpacity: 0.9 });
               });
-              // ✅ 新增：當滑出圖層時，用集中樣式函式把狀態拉回一致（避免 hover 留色）
-              layer.on('mouseout', () => {
-                applyLayerColorsRef.current();;
-              });
-
-              // ✅ 新增：若滑入的是已選取的格子，維持選取樣式（避免被 hover 覆蓋）
-              layer.on('mouseover', (e: L.LeafletMouseEvent) => {
-                const f = layer.feature as GridFeature;
-                const fid = getFeatureId(layer.feature as GridFeature);
-
-                if (selectedIdRef.current && fid === selectedIdRef.current) {
-                  applyLayerColorsRef.current();; // 保險：確保樣式一致
-                  return;
-                }
-
-                // 其他格：臨時填黃（只改這一層，不動全域 state）
-                (e.target as L.Path).setStyle({
-                  fillColor: HOVER_YELLOW,
-                  fillOpacity: 0.9,
-                  // 邊框維持原本橘色與粗細，避免干擾你已設計的視覺
-                  // 若想強一點，也可在此暫時加 weight: 3
-                });
-
-              });
-
+              layer.on('mouseout', () => { applyLayerColorsRef.current(); });
             },
-
           }).addTo(map);
-
           gridLayerRef.current = gridLayer;
-          applyLayerColorsRef.current();; // ✅ 新增：地圖載好後先套一次樣式
-          try {
-            const b = gridLayer.getBounds();
-            if (b.isValid()) map.fitBounds(b, { padding: [10, 10] });
-            map.panBy([-200, 0]); // 向左平移 100 像素
-          } catch { }
+          applyLayerColorsRef.current();
+          try { 
+            const b = gridLayer.getBounds(); 
+            if (b.isValid()) {
+              map.fitBounds(b, { padding: [10, 10] });
+              map.panBy([-200, 0]);
+            }
+          } catch {}
         })
         .catch(console.error);
     });
@@ -436,26 +346,114 @@ export default function MapSection() {
     };
   }, []);
 
+  // ======== 產生候選 URL（同時嘗試多種路徑寫法） ========
+  function buildApiCandidates(): string[] {
+    if (rowId == null || colId == null) return [];
+    const mPadded = pad2(month), mRaw = String(month);
+    const combos = [ { c: colId, r: rowId }, { c: rowId, r: colId } ];
+
+    const urls: string[] = [];
+    for (const base of getBases()) {
+      if (mode === 'time') {
+        const y = activeSlider === 'past' ? pastYear : futureYear;
+        const prefix = activeSlider === 'past' ? 'history' : 'prediction';
+        for (const { c, r } of combos) {
+          urls.push(`${base}/data/${y}/${mPadded}/${c}+${r}`);
+          urls.push(`${base}/data/${y}/${mPadded}/${c}%2B${r}`);
+          urls.push(`${base}/data/${y}/${mRaw}/${c}+${r}`);
+          urls.push(`${base}/data/${y}/${mRaw}/${c}%2B${r}`);
+          urls.push(`${base}/data/${prefix}/${y}/${mPadded}/${c}/${r}`);
+          urls.push(`${base}/data/${prefix}/${y}/${mRaw}/${c}/${r}`);
+        }
+      } else {
+        const v01 = to01(veg).toFixed(2);
+        for (const { c, r } of combos) {
+          urls.push(`${base}/NDVI/${mPadded}/${v01}/${c}+${r}`);
+          urls.push(`${base}/NDVI/${mPadded}/${v01}/${c}%2B${r}`);
+          urls.push(`${base}/NDVI/${mRaw}/${v01}/${c}+${r}`);
+          urls.push(`${base}/NDVI/${mRaw}/${v01}/${c}%2B${r}`);
+        }
+      }
+    }
+    return Array.from(new Set(urls));
+  }
+
+  // ======== 抓資料（逐一嘗試直到成功，404 才換下一個） ========
+  useEffect(() => {
+    const candidates = buildApiCandidates();
+    if (!candidates.length) { 
+      setApiData(null); 
+      setApiError(null); 
+      setTriedUrls([]); 
+      return; 
+    }
+
+    let aborted = false;
+    setApiLoading(true); 
+    setApiError(null); 
+    setTriedUrls(candidates);
+
+    (async () => {
+      let lastErr: any = null;
+      for (const url of candidates) {
+        try {
+          const data = await fetchJSON<ClimatePayload>(url);
+          if (!aborted) { setApiData(data); setApiError(null); }
+          return;
+        } catch (e: any) {
+          lastErr = e;
+          if (!(e instanceof NoDataError) && !String(e.message||'').includes('HTTP 404')) break;
+        }
+      }
+      if (!aborted) {
+        if (lastErr instanceof NoDataError || String(lastErr?.message||'').includes('HTTP 404')) {
+          setApiData(null); setApiError('查無資料');
+        } else {
+          setApiData(null); setApiError(lastErr?.message || '讀取失敗');
+        }
+      }
+    })().finally(() => { if (!aborted) setApiLoading(false); });
+
+    return () => { aborted = true; };
+  }, [mode, activeSlider, pastYear, futureYear, month, veg, rowId, colId]);
+
+  const flaskTemp = useMemo(() => (
+    apiData?.predicted_temperatures?.current ??
+    apiData?.temperatures?.current ??
+    apiData?.apparent_temperatures?.current
+  ), [apiData]);
+
+  // =================== UI ===================
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+    setCurrentFeature(null);
+    setCenterLL(null);
+    selectionLayerRef.current?.clearLayers();
+    setSelectedCellId(null);
+  };
+
+  const isInView = useInView(sectionRef, { once: false });
+
   return (
     <section
       id="map-section"
       ref={sectionRef}
       className="relative overflow-hidden h-[200vh] bg-transparent"
-      style={{ opacity: mounted ? 1 : 0 }} // 用樣式控制顯示
+      style={{ opacity: mounted ? 1 : 0 }}
     >
       {/* 標題層 */}
       <div className="sticky top-0 h-screen flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.8, x: 0, y: 0 }}
-          style={{ 
-            opacity: mounted ? titleOpacity : 0, 
+          style={{
+            opacity: mounted ? titleOpacity : 0,
             scale: mounted ? titleScale : 0.8
           }}
           className="text-center px-4 w-full flex flex-col items-center justify-center"
         >
           <h2
             className="font-display text-white tracking-wider text-center"
-            style={{ 
+            style={{
               fontSize: 'clamp(1.2rem, 6vw, 4rem)',
               lineHeight: '1.2'
             }}
@@ -464,7 +462,7 @@ export default function MapSection() {
           </h2>
           <motion.p
             className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4"
-            style={{ 
+            style={{
               opacity: mounted ? descriptionOpacity : 0,
               fontSize: 'clamp(0.8rem, 2vw, 1.8rem)',
               lineHeight: '1.4'
@@ -475,254 +473,251 @@ export default function MapSection() {
         </motion.div>
       </div>
 
-        {/* 地圖容器 */}
-        <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden" style={{ marginTop: '2rem' }}>
-          {/* 當前年月顯示 */}
-          <div className="absolute top-4 left-4 z-20 bg-black/90 rounded-lg p-4 text-white border border-gray-700">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">當前時間</span>
-                <div className="text-lg font-bold">
-                  {mode === 'time' ? (
-                    activeSlider === 'past' ? `${pastYear}` : `${futureYear}`
-                  ) : '2022'} 年 {month} 月
-                </div>
-              </div>
-              <div className="border-l border-gray-600 pl-4">
-                <span className="text-xs text-gray-400">
-                  {mode === 'time' ? (
-                    activeSlider === 'past' ? '📊 歷史資料' : '🔮 未來預測'
-                  ) : '🌱 植被分析'}
-                </span>
-              </div>
-            </div>
-          </div>
+      {/* 模式切換 */}
+      <div className="flex justify-center mb-8 gap-4">
+        <button
+          onClick={() => setMode('time')}
+          className={`px-6 py-3 rounded-lg font-semibold transition-all ${mode === 'time'
+            ? 'bg-green-500 text-black'
+            : 'text-gray-400 border border-gray-700 hover:text-white'
+            }`}
+        >
+          理解雙北十年的溫度脈動
+        </button>
+        <button
+          onClick={() => setMode('population')}
+          className={`px-6 py-3 rounded-lg font-semibold transition-all ${mode === 'population'
+            ? 'bg-green-500 text-black'
+            : 'text-gray-400 border border-gray-700 hover:text-white'
+            }`}
+        >
+          以植物為核心預測未來場景
+        </button>
+      </div>
 
-          {/* 溫度圖例 - 橫向布局 */}
-          <div className="absolute top-4 right-4 z-10 bg-black/80 rounded-lg px-4 py-3 text-white text-xs">
-            <div className="flex items-center gap-4">
-              <span className="font-bold">溫度圖例 ({month}月)</span>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded" style={{ backgroundColor: '#EAB090' }}></div>
-                  <span className="text-xs">低溫</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded" style={{ backgroundColor: '#E27777' }}></div>
-                  <span className="text-xs">中低溫</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded" style={{ backgroundColor: '#AE567D' }}></div>
-                  <span className="text-xs">中高溫</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded" style={{ backgroundColor: '#724B80' }}></div>
-                  <span className="text-xs">高溫</span>
-                </div>
+      {/* 地圖容器 */}
+      <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden" style={{ marginTop: '2rem' }}>
+        {/* 當前年月顯示 */}
+        <div className="absolute top-4 left-4 z-20 bg-black/90 rounded-lg p-4 text-white border border-gray-700">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">當前時間</span>
+              <div className="text-lg font-bold">
+                {mode === 'time' ? (
+                  activeSlider === 'past' ? `${pastYear}` : `${futureYear}`
+                ) : '2022'} 年 {month} 月
               </div>
             </div>
-          </div>
-
-
-
-          {/* 地圖容器 */}
-          <div id="leaflet-map" ref={mapRef} className="w-full h-[520px] mt-[80px] rounded-2xl overflow-hidden border border-gray-800" />
-
-          {/* 側邊資訊面板 */}
-          <div className={`info-sidebar ${mode === 'population' ? 'mode-population' : 'mode-time'} ${sidebarOpen ? 'open' : ''}`}>
-            <div className="sidebar-header">
-              <div className="sidebar-title">
-                {mode === 'population' ? '🌱 植被溫度分析' : '⏰ 時間溫度預測'}
-              </div>
-              <button className="close-btn" onClick={closeSidebar} aria-label="關閉側欄">×</button>
-            </div>
-
-            <div className="sidebar-content">
-              {!currentFeature && <div className="no-selection">點擊任一網格查看資料 🔍</div>}
-
-              {currentFeature && mode === 'population' && (
-                <div id="populationContent">
-                  <h4 className="section-title">🌱 植被覆蓋率 → 溫度</h4>
-                  <div className="control-group">
-                    <label htmlFor="vegSlider">植被覆蓋率（%）：</label>
-                    <div className="slider-container">
-                      <input
-                        id="vegSlider"
-                        type="range"
-                        className="slider"
-                        min={0}
-                        max={100}
-                        step={1}
-                        value={veg}
-
-                        onChange={(e) => {
-                          e.preventDefault();
-                          setVeg(Number(e.target.value));
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                      <div className="slider-value">{veg}%</div>
-                    </div>
-                  </div>
-                  <div className="result-display">
-                    <div>
-                      格子中心：
-                      <span>{centerLL ? centerLL.lat.toFixed(4) : '--'}</span>,
-                      <span> {centerLL ? centerLL.lng.toFixed(4) : '--'}</span>
-                    </div>
-                    <div>
-                      當月溫度：<span>{typeof baseTemp === 'number' ? baseTemp.toFixed(1) : '--'}</span> °C
-                    </div>
-                    <div className="temp">🌡️ 預測溫度：<span>{vegPredicted ?? '--'}</span> °C</div>
-                  </div>
-                </div>
-              )}
-
-              {currentFeature && mode === 'time' && (
-                <div id="timeContent">
-                  <h4 className="section-title">⏰ 時間 → 未來溫度</h4>
-
-                  {/* 月份選擇 */}
-                  <div className="control-group">
-                    <label htmlFor="timeSlider">月份（1~12）：</label>
-                    <div className="slider-container">
-                      <input
-                        id="timeSlider"
-                        type="range"
-                        className="slider"
-                        min={1}
-                        max={12}
-                        step={1}
-                        value={month}
-
-                        onChange={(e) => {
-                          e.preventDefault();
-                          setMonth(Number(e.target.value));
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                      <div className="slider-value">當前：<span>{month}</span> 月</div>
-                    </div>
-                  </div>
-
-                  {/* 年份範圍選擇 */}
-                  <div className="year-selector">
-                    <h5 className="year-title">選擇年份範圍：</h5>
-
-                    {/* 過去年份 2013-2023 */}
-                    <div className="year-option">
-                      <div className="radio-container">
-                        <input
-                          type="radio"
-                          id="pastRange"
-                          name="yearRange"
-                          checked={activeSlider === 'past'}
-                          onChange={() => setActiveSlider('past')}
-                          className="radio-input"
-                        />
-                        <label htmlFor="pastRange" className="radio-label">
-                          📊 歷史資料 (2013-2023)
-                        </label>
-                      </div>
-                      <div className="slider-container">
-                        <input
-                          type="range"
-                          className={`slider ${activeSlider !== 'past' ? 'disabled' : ''}`}
-                          min={2013}
-                          max={2023}
-                          step={1}
-                          value={pastYear}
-                          onChange={(e) => {
-                            e.preventDefault();
-                            if (activeSlider === 'past') {
-                              setPastYear(Number(e.target.value));
-                            }
-                          }}
-                          onMouseDown={(e) => {
-                            if (activeSlider !== 'past') {
-                              e.preventDefault();
-                            }
-                          }}
-
-                          disabled={activeSlider !== 'past'}
-                        />
-                        <div className="slider-value">
-                          {activeSlider === 'past' ? pastYear : '---'} 年
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 未來年份 2025-2035 */}
-                    <div className="year-option">
-                      <div className="radio-container">
-                        <input
-                          type="radio"
-                          id="futureRange"
-                          name="yearRange"
-                          checked={activeSlider === 'future'}
-                          onChange={() => setActiveSlider('future')}
-                          className="radio-input"
-                        />
-                        <label htmlFor="futureRange" className="radio-label">
-                          🔮 未來預測 (2025-2035)
-                        </label>
-                      </div>
-                      <div className="slider-container">
-                        <input
-                          type="range"
-                          className={`slider ${activeSlider !== 'future' ? 'disabled' : ''}`}
-                          min={2025}
-                          max={2035}
-                          step={1}
-                          value={futureYear}
-                          onChange={(e) => {
-                            e.preventDefault();
-                            if (activeSlider === 'future') {
-                              setFutureYear(Number(e.target.value));
-                            }
-                          }}
-                          onMouseDown={(e) => {
-                            if (activeSlider !== 'future') {
-                              e.preventDefault();
-                            }
-                          }}
-
-                          disabled={activeSlider !== 'future'}
-                        />
-                        <div className="slider-value">
-                          {activeSlider === 'future' ? futureYear : '---'} 年
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="result-display">
-                    <div>
-                      格子中心：
-                      <span>{centerLL ? centerLL.lat.toFixed(4) : '--'}</span>,
-                      <span> {centerLL ? centerLL.lng.toFixed(4) : '--'}</span>
-                    </div>
-                    {/* <div>
-                      基準溫度：<span>{typeof baseTemp === 'number' ? baseTemp.toFixed(1) : '--'}</span> °C
-                    </div> */}
-                    <div className="temp">🌡️ 溫度：<span>{timePredicted ?? '--'}</span> °C</div>
-                    <div className="year-info">
-                      {activeSlider === 'past' ? (
-                        <span className="info-text">📊 基於 {pastYear} 年歷史資料</span>
-                      ) : (
-                        <span className="info-text">🔮 預測至 {futureYear} 年</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="border-l border-gray-600 pl-4">
+              <span className="text-xs text-gray-400">
+                {mode === 'time' ? (
+                  activeSlider === 'past' ? '📊 歷史資料' : '🔮 未來預測'
+                ) : '🌱 植被分析'}
+              </span>
             </div>
           </div>
         </div>
+
+        {/* 中間控制拉桿區域 */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-black/90 rounded-lg p-4 text-white border border-gray-700">
+          {mode === 'population' ? (
+            /* 植被模式：植被覆蓋率拉桿 */
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-gray-400 whitespace-nowrap">🌱 植被覆蓋率</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={veg}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    setVeg(Number(e.target.value));
+                  }}
+                  className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #22c55e 0%, #22c55e ${veg}%, #374151 ${veg}%, #374151 100%)`
+                  }}
+                />
+                <span className="text-sm font-bold text-green-400 min-w-[3rem]">{veg}%</span>
+              </div>
+            </div>
+          ) : (
+            /* 時間模式：年份和月份拉桿 */
+            <div className="flex items-center gap-6">
+              {/* 年份切換 */}
+              <div className="flex items-center gap-3">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setActiveSlider('past')}
+                    className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'past'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-400 border border-gray-600 hover:text-white'
+                      }`}
+                  >
+                    📊 歷史
+                  </button>
+                  <button
+                    onClick={() => setActiveSlider('future')}
+                    className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'future'
+                      ? 'bg-purple-500 text-white'
+                      : 'text-gray-400 border border-gray-600 hover:text-white'
+                      }`}
+                  >
+                    🔮 未來
+                  </button>
+                </div>
+
+                {/* 年份拉桿 */}
+                <input
+                  type="range"
+                  min={activeSlider === 'past' ? 2013 : 2025}
+                  max={activeSlider === 'past' ? 2023 : 2035}
+                  step={1}
+                  value={activeSlider === 'past' ? pastYear : futureYear}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    const value = Number(e.target.value);
+                    if (activeSlider === 'past') {
+                      setPastYear(value);
+                    } else {
+                      setFutureYear(value);
+                    }
+                  }}
+                  className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: activeSlider === 'past'
+                      ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((pastYear - 2013) / 10) * 100}%, #374151 ${((pastYear - 2013) / 10) * 100}%, #374151 100%)`
+                      : `linear-gradient(to right, #a855f7 0%, #a855f7 ${((futureYear - 2025) / 10) * 100}%, #374151 ${((futureYear - 2025) / 10) * 100}%, #374151 100%)`
+                  }}
+                />
+                <span className={`text-sm font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-purple-400'
+                  }`}>
+                  {activeSlider === 'past' ? pastYear : futureYear}年
+                </span>
+              </div>
+
+              {/* 月份拉桿 */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={12}
+                  step={1}
+                  value={month}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    setMonth(Number(e.target.value));
+                  }}
+                  className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)`
+                  }}
+                />
+                <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 地圖容器 */}
+        <div id="leaflet-map" ref={mapRef} className="w-full h-[520px] mt-[80px] rounded-2xl overflow-hidden border border-gray-800" />
+
+        {/* 側邊資訊面板 */}
+        <div className={`info-sidebar ${mode === 'population' ? 'mode-population' : 'mode-time'} ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-header">
+            <div className="sidebar-title">
+              {mode === 'population' ? '🌱 植被溫度分析' : '⏰ 時間溫度預測'}
+            </div>
+            <button className="close-btn" onClick={closeSidebar} aria-label="關閉側欄">×</button>
+          </div>
+
+          <div className="sidebar-content">
+            {!currentFeature && <div className="no-selection">點擊任一網格查看資料 📍</div>}
+
+            {currentFeature && (
+              <div>
+                {/* 基本位置資訊 */}
+                <div className="section">
+                  <h4 className="section-title">📍 位置資訊</h4>
+                  <div className="info-grid">
+                    <div>row_id: <strong>{rowId}</strong></div>
+                    <div>column_id: <strong>{colId}</strong></div>
+                    <div>經緯度: {centerLL ? `${centerLL.lat.toFixed(4)}, ${centerLL.lng.toFixed(4)}` : '—'}</div>
+                  </div>
+                </div>
+
+
+                {/* Flask API 資料 */}
+                <div className="section">
+                  <h4 className="section-title">🔗 溫度資訊</h4>
+                  {apiLoading ? (
+                    <div className="loading">讀取中…</div>
+                  ) : apiError ? (
+                    <div className="error-section">
+                      <div className="error-msg">錯誤：{apiError}</div>
+                      {!!triedUrls.length && (
+                        <details className="url-details">
+                          <summary>檢視嘗試過的網址</summary>
+                          <div className="url-list">
+                            {triedUrls.slice(0, 5).map((u, i) => <div key={i}>{u}</div>)}
+                            {triedUrls.length > 5 && <div>...還有 {triedUrls.length - 5} 個</div>}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="api-data">
+                      <div>年月: {apiData?.metadata?.year ?? '—'} / {apiData?.metadata?.month ?? '—'}</div>
+                      {typeof flaskTemp === 'number' ? (
+                        <div className="temp">🌡️ 溫度: <strong>{flaskTemp.toFixed(1)} °C</strong></div>
+                      ) : (
+                        <div>🌡️ 溫度: —</div>
+                      )}
+                      {mode === 'population' && (
+                        <div>植被: {apiData?.metadata?.vegetation ?? '—'}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 模式特定資訊 */}
+                <div className="section">
+                  <h4 className="section-title">
+                    {mode === 'population' ? '🌱 植被影響' : '⏰ 時間變化'}
+                  </h4>
+                  <div className="mode-info">
+                    {mode === 'population' ? (
+                      <div>
+                        <div>當前設定: {veg}% 植被覆蓋</div>
+                        <div className="info-text">植被越高 → 降溫效果越明顯</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div>
+                          {activeSlider === 'past' ? (
+                            <span className="info-text">📊 基於 {pastYear} 年歷史資料</span>
+                          ) : (
+                            <span className="info-text">🔮 預測至 {futureYear} 年</span>
+                          )}
+                        </div>
+                        <div className="info-text">
+                          {activeSlider === 'past' 
+                            ? '回顧過去溫度變化趨勢' 
+                            : '基於氣候模型預測未來'
+                          }
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       <style jsx>{`
         .info-sidebar { 
@@ -818,114 +813,107 @@ export default function MapSection() {
           color: rgba(255,255,255,0.85); 
           margin-top: 30px; 
         }
+        .section {
+          margin-bottom: 20px;
+          background: rgba(255,255,255,0.05);
+          padding: 12px;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.1);
+        }
         .section-title {
           font-size: 13px;
-          margin-bottom: 15px;
+          margin-bottom: 10px;
           font-weight: bold;
+          color: currentColor;
+          text-shadow: 0 0 5px currentColor;
         }
-        .control-group { 
-          margin: 12px 0; 
-          background: rgba(255,255,255,0.1); 
-          padding: 10px; 
-          border-radius: 8px; 
+        .info-grid {
+          display: grid;
+          gap: 6px;
+          font-size: 11px;
         }
-        .control-group label { 
-          display: block; 
-          margin-bottom: 8px; 
-          font-weight: bold; 
-          font-size: 11px; 
+        .info-grid div {
+          color: rgba(255,255,255,0.9);
         }
-        .slider-container { 
-          margin: 8px 0; 
-        }
-        .slider { 
-          width: 100%; 
-          height: 6px; 
-          border-radius: 3px; 
-          background: rgba(255,255,255,0.3); 
-          outline: none; 
-          -webkit-appearance: none; 
-        }
-        .slider::-webkit-slider-thumb { 
-          -webkit-appearance: none; 
-          appearance: none; 
-          width: 16px; 
-          height: 16px; 
-          border-radius: 50%; 
-          background: white; 
-          cursor: pointer; 
-          box-shadow: 0 1px 4px rgba(0,0,0,0.2); 
-        }
-        .slider-value { 
-          text-align: center; 
-          font-size: 14px; 
-          font-weight: bold; 
-          margin-top: 8px; 
-          background: rgba(255,255,255,0.2); 
-          padding: 6px; 
-          border-radius: 4px; 
+        .info-grid strong {
+          color: currentColor;
+          font-weight: bold;
         }
         .result-display { 
           background: rgba(255,255,255,0.1); 
           padding: 10px; 
-          border-radius: 8px; 
-          margin-top: 12px; 
-          text-align: center; 
+          border-radius: 6px; 
+          font-size: 11px;
         }
         .result-display .temp { 
-          font-size: 1.5em; 
+          font-size: 1.3em; 
           font-weight: bold; 
           margin: 8px 0; 
+          color: currentColor;
+          text-shadow: 0 0 8px currentColor;
         }
-        .year-selector {
-          background: rgba(255,255,255,0.05);
-          padding: 12px;
-          border-radius: 8px;
-          margin: 12px 0;
-        }
-        .year-title {
-          font-size: 12px;
-          font-weight: bold;
-          margin-bottom: 10px;
-          color: rgba(255,255,255,0.9);
-        }
-        .year-option {
-          margin-bottom: 12px;
-          padding: 8px;
-          background: rgba(255,255,255,0.03);
-          border-radius: 6px;
-        }
-        .radio-container {
-          display: flex;
-          align-items: center;
-          margin-bottom: 6px;
-        }
-        .radio-input {
-          margin-right: 8px;
-          transform: scale(1.2);
-          accent-color: currentColor;
-        }
-        .radio-label {
-          font-size: 11px;
-          font-weight: bold;
-          cursor: pointer;
-        }
-        .slider.disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-        .slider.disabled::-webkit-slider-thumb {
-          cursor: not-allowed;
-          background: #666;
-        }
-        .year-info {
-          margin-top: 8px;
+        .loading {
           text-align: center;
-        }
-        .info-text {
-          font-size: 11px;
           color: rgba(255,255,255,0.7);
           font-style: italic;
+        }
+        .error-section {
+          background: rgba(255,0,0,0.1);
+          padding: 10px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,0,0,0.3);
+        }
+        .error-msg {
+          color: #ff6b6b;
+          font-size: 11px;
+          margin-bottom: 8px;
+        }
+        .url-details {
+          margin-top: 8px;
+        }
+        .url-details summary {
+          cursor: pointer;
+          font-size: 10px;
+          color: rgba(255,255,255,0.6);
+          margin-bottom: 5px;
+        }
+        .url-list {
+          font-size: 9px;
+          color: rgba(255,255,255,0.5);
+          max-height: 80px;
+          overflow-y: auto;
+          background: rgba(0,0,0,0.3);
+          padding: 5px;
+          border-radius: 4px;
+        }
+        .url-list div {
+          margin-bottom: 2px;
+          word-break: break-all;
+        }
+        .api-data {
+          font-size: 11px;
+          color: rgba(255,255,255,0.9);
+        }
+        .api-data div {
+          margin-bottom: 6px;
+        }
+        .api-data .temp {
+          font-size: 1.3em;
+          font-weight: bold;
+          color: currentColor;
+          text-shadow: 0 0 8px currentColor;
+        }
+        .mode-info {
+          font-size: 11px;
+          color: rgba(255,255,255,0.8);
+        }
+        .mode-info div {
+          margin-bottom: 6px;
+        }
+        .info-text {
+          font-style: italic;
+          color: rgba(255,255,255,0.7);
+          font-size: 10px;
         }
 
         @media (max-width: 1024px) {
