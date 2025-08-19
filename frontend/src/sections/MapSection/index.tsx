@@ -437,52 +437,43 @@ export default function MapSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="min-h-screen py-12 px-6 bg-gray-900 relative">
-      <div className="max-w-7xl mx-auto">
-        {/* 標題（保留原有進場特效） */}
-        {/* <div className="sticky top-0 h-screen flex items-center justify-center"> */}
+    <section
+      id="map-section"
+      ref={sectionRef}
+      className="relative overflow-hidden h-[200vh] bg-transparent"
+      style={{ opacity: mounted ? 1 : 0 }} // 用樣式控制顯示
+    >
+      {/* 標題層 */}
+      <div className="sticky top-0 h-screen flex items-center justify-center">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
+          initial={{ opacity: 0, scale: 0.8, x: 0, y: 0 }}
+          style={{ 
+            opacity: mounted ? titleOpacity : 0, 
+            scale: mounted ? titleScale : 0.8
+          }}
+          className="text-center px-4 w-full flex flex-col items-center justify-center"
         >
-          <h2 className="text-4xl md:text-6xl font-black text-white mb-4">Heat Island 熱島效應</h2>
-          <p className="text-xl text-gray-400">Live Monitoring 即時監測</p>
-        </motion.div>
-        {/* </div> */}
-
-        {/* 標題層 */}
-        <div className="sticky top-0 h-screen flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, x: 0, y: 0 }}
+          <h2
+            className="font-display text-white tracking-wider text-center"
             style={{ 
-              opacity: mounted ? titleOpacity : 0, 
-              scale: mounted ? titleScale : 0.8
+              fontSize: 'clamp(1.2rem, 6vw, 4rem)',
+              lineHeight: '1.2'
             }}
-            className="text-center px-4 w-full flex flex-col items-center justify-center"
           >
-            <h2
-              className="font-display text-white tracking-wider text-center"
-              style={{ 
-                fontSize: 'clamp(1.2rem, 6vw, 4rem)',
-                lineHeight: '1.2'
-              }}
-            >
-              Heat Island Model
-            </h2>
-            <motion.p
-              className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4"
-              style={{ 
-                opacity: mounted ? descriptionOpacity : 0,
-                fontSize: 'clamp(0.8rem, 2vw, 1.8rem)',
-                lineHeight: '1.4'
-              }}
-            >
-              理解雙北十年的溫度脈動 ↔ 以植物為核心預測未來場景
-            </motion.p>
-          </motion.div>
-        </div>
+            Heat Island Model
+          </h2>
+          <motion.p
+            className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4"
+            style={{ 
+              opacity: mounted ? descriptionOpacity : 0,
+              fontSize: 'clamp(0.8rem, 2vw, 1.8rem)',
+              lineHeight: '1.4'
+            }}
+          >
+            理解雙北十年的溫度脈動 ↔ 以植物為核心預測未來場景
+          </motion.p>
+        </motion.div>
+      </div>
 
         {/* 地圖容器 */}
         <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden" style={{ marginTop: '2rem' }}>
@@ -732,7 +723,6 @@ export default function MapSection() {
             </div>
           </div>
         </div>
-      </div>
 
       <style jsx>{`
         .info-sidebar { 
