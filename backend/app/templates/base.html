@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }} - 热岛效应分析</title>
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('main.index') }}">主页</a>
+        <a href="{{ url_for('login.login') }}">登录</a>
+        <a href="{{ url_for('climate_class.index') }}">气候课堂</a>
+        <a href="{{ url_for('predict_future_climate.index') }}">未来气候预测</a>
+        <a href="{{ url_for('predict_climate_variable.index') }}">气候变量预测</a>
+    </nav>
+    <hr>
+    {% block content %}{% endblock %}
+</body>
+</html>

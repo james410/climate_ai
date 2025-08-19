@@ -1,0 +1,31 @@
+/climate_ai
+├── .gitignore
+├── LICENSE
+├── README.md
+├── config.py
+├── requirements.txt
+├── run.py
+├── app/
+│   ├── __init__.py
+│   ├── models.py
+│   │
+│   ├── climate_class/
+│   │   ├── __init__.py
+│   │   ├── routes.py
+│   ├── login/
+│   │   ├── __init__.py
+│   │   ├── forms.py
+│   │   ├── routes.py
+│   ├── main/
+│   │   ├── __init__.py
+│   │   ├── routes.py
+│   ├── predict_climate_variable/
+│   │   ├── __init__.py
+│   │   ├── routes.py
+│   ├── predict_future_climate/
+│   │   ├── __init__.py
+│   │   ├── routes.py
+│   ├── static/
+│   └── templates/
+│       ├── base.html
+│       └── index.html

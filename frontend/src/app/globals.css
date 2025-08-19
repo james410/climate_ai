@@ -1,0 +1,46 @@
+/* /src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'DroidSansMono';
+  src: url('/Users/uminoko/Library/Fonts/DroidSansMono.ttf') format('ttf');
+}
+
+
+/* 全站平滑滾動 */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 防止水平滾動並支援 3D 變換 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'DroidSansMono', monospace;
+  letter-spacing: 1.2px;
+  /* overflow-x: hidden; */
+  color: white;
+  transform-style: preserve-3d;
+  background-color: rgb(37, 38, 40);
+}
+
+/* 通用元素去邊距 */
+* {
+  box-sizing: border-box;
+}
+
+/* 噪點覆蓋層 */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10; /* 確保在主要內容下方 */
+  pointer-events: none;
+  background-image: url('/images/noise.png');
+  background-repeat: repeat;
+  background-size: 800px;
+  opacity: 0.25;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
