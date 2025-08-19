@@ -7,18 +7,30 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "start:backend": "cd Rag_Chatbot && .venv\\Scripts\\activate && python CHATBOT.py",
+    "start:flask": "python route.py",
+    "init:db": "python init_database.py",
+    "dev:full": "concurrently \"npm run start:backend\" \"npm run dev\"",
+    "dev:flask": "concurrently \"npm run start:flask\" \"npm run dev\"",
+    "start:full": "concurrently \"npm run start:backend\" \"npm run start\"",
+    "start:system": "start-full-system.bat"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.6",
     "class-variance-authority": "^0.7.1",
     "framer-motion": "^12.23.12",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.263.1",
     "next": "15.4.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "styled-components": "^6.1.19"
+    "styled-components": "^6.1.19",
+    "recharts": "^3.1.2",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.16",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

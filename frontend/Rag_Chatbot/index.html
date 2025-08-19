@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG 聊天機器人</title>
+    <style>
+        /* 基礎樣式 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .chat-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 600px;
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* 標題區 */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .status {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ffc107;
+            margin-right: 8px;
+        }
+        
+        .status-dot.ready { background: #28a745; }
+        .status-dot.error { background: #dc3545; }
+        
+        /* 聊天區域 */
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin: 10px 0;
+            padding: 12px 16px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .message.bot {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message.system {
+            background: #e3f2fd;
+            color: #1976d2;
+            text-align: center;
+            margin: 5px auto;
+            font-size: 0.9rem;
+        }
+        
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-left: 8px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 輸入區域 */
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            outline: none;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .message-input:focus {
+            border-color: #007bff;
+        }
+        
+        .message-input:disabled {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+        
+        .send-btn {
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            min-width: 80px;
+        }
+        
+        .send-btn:hover:not(:disabled) {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .send-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        
+        .control-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid #007bff;
+            color: #007bff;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: #007bff;
+            color: white;
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 480px) {
+            .chat-container {
+                height: 90vh;
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .header h1 { font-size: 1.3rem; }
+            .message { max-width: 90%; }
+            .input-container { flex-direction: column; }
+            .send-btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 標題區 -->
+        <div class="header">
+            <h1>🤖 RAG 聊天機器人</h1>
+            <div class="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">連接中...</span>
+            </div>
+        </div>
+
+        <!-- 聊天訊息區 -->
+        <div id="chatMessages" class="chat-messages">
+            <!-- 訊息會動態添加到這裡 -->
+        </div>
+
+        <!-- 輸入區 -->
+        <div class="input-area">
+            <div class="input-container">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    class="message-input"
+                    placeholder="請輸入您的問題..." 
+                    disabled
+                >
+                <button id="sendBtn" class="send-btn" disabled>發送</button>
+            </div>
+            <div class="controls">
+                <button class="control-btn" onclick="clearChat()">🗑️ 清除對話</button>
+                <button class="control-btn" onclick="checkStatus()">📊 檢查狀態</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let sessionId = 'user_' + Date.now();
+        let isLoading = false;
+
+        // DOM 元素
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemStatus();
+            setupEventListeners();
+            addWelcomeMessage();
+        });
+
+        // 設置事件監聽器
+        function setupEventListeners() {
+            // Enter 鍵發送訊息
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !isLoading) {
+                    sendMessage();
+                }
+            });
+
+            // 發送按鈕點擊
+            sendBtn.addEventListener('click', sendMessage);
+        }
+
+        // 檢查系統狀態
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                if (data.ready) {
+                    updateStatus('ready', '系統就緒');
+                    enableInput();
+                } else {
+                    updateStatus('error', '系統未就緒');
+                    addMessage('系統正在初始化中，請稍候...', 'system');
+                }
+            } catch (error) {
+                updateStatus('error', '連接失敗');
+                addMessage('無法連接到服務器，請檢查網路', 'error');
+            }
+        }
+
+        // 更新狀態顯示
+        function updateStatus(status, text) {
+            statusDot.className = `status-dot ${status}`;
+            statusText.textContent = text;
+        }
+
+        // 啟用輸入
+        function enableInput() {
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            messageInput.focus();
+        }
+
+        // 禁用輸入
+        function disableInput() {
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+        }
+
+        // 添加歡迎訊息
+        function addWelcomeMessage() {
+            const welcome = '您好！我是 RAG 聊天機器人，可以根據已載入的文檔回答您的問題。請問有什麼可以幫助您的嗎？';
+            addMessage(welcome, 'bot');
+        }
+
+        // 添加訊息到聊天區
+        function addMessage(content, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            if (type === 'loading') {
+                messageDiv.innerHTML = `<span class="loading">正在思考中</span>`;
+            } else {
+                messageDiv.textContent = content;
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        // 移除訊息
+        function removeMessage(messageElement) {
+            if (messageElement && messageElement.parentNode) {
+                messageElement.parentNode.removeChild(messageElement);
+            }
+        }
+
+        // 設置載入狀態
+        function setLoading(loading) {
+            isLoading = loading;
+            if (loading) {
+                disableInput();
+                sendBtn.textContent = '傳送中...';
+                updateStatus('', '處理中...');
+            } else {
+                enableInput();
+                sendBtn.textContent = '發送';
+                updateStatus('ready', '系統就緒');
+            }
+        }
+
+        // 發送訊息
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            
+            if (!message || isLoading) return;
+
+            // 驗證訊息長度
+            if (message.length > 500) {
+                addMessage('訊息長度不能超過 500 字', 'error');
+                return;
+            }
+
+            // 顯示用戶訊息
+            addMessage(message, 'user');
+            messageInput.value = '';
+
+            // 設置載入狀態
+            setLoading(true);
+            const loadingMsg = addMessage('', 'loading');
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: sessionId
+                    })
+                });
+
+                const data = await response.json();
+                
+                // 移除載入訊息
+                removeMessage(loadingMsg);
+
+                if (data.success) {
+                    addMessage(data.response, 'bot');
+                    const sources = data.sources || 0;
+                    updateStatus('ready', `已回應 (參考 ${sources} 個來源)`);
+                } else {
+                    addMessage(`錯誤: ${data.error}`, 'error');
+                    updateStatus('error', '回應失敗');
+                }
+
+            } catch (error) {
+                removeMessage(loadingMsg);
+                addMessage('網路錯誤，請稍後重試', 'error');
+                updateStatus('error', '網路錯誤');
+                console.error('發送訊息錯誤:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // 清除對話
+        async function clearChat() {
+            if (isLoading) return;
+
+            if (confirm('確定要清除所有對話記錄嗎？')) {
+                try {
+                    await fetch('/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            session_id: sessionId
+                        })
+                    });
+
+                    // 清除界面
+                    chatMessages.innerHTML = '';
+                    addWelcomeMessage();
+                    updateStatus('ready', '對話已清除');
+
+                } catch (error) {
+                    addMessage('清除對話失敗', 'error');
+                }
+            }
+        }
+
+        // 檢查狀態
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                let statusInfo = '系統狀態:\n';
+                statusInfo += `• 整體狀態: ${data.ready ? '✅ 就緒' : '❌ 未就緒'}\n`;
+                statusInfo += `• 語言模型: ${data.llm_loaded ? '✅ 已載入' : '❌ 未載入'}\n`;
+                statusInfo += `• 向量資料庫: ${data.vectorstore_loaded ? '✅ 已載入' : '❌ 未載入'}\n`;
+                statusInfo += `• 會話 ID: ${sessionId}`;
+                
+                alert(statusInfo);
+                
+            } catch (error) {
+                alert('無法獲取系統狀態');
+            }
+        }
+    </script>
+</body>
+</html>
