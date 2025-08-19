@@ -5,47 +5,13 @@ import { forwardRef, useState, useEffect } from 'react';
 import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 
 function CustomGradient() {
-  const { scrollYProgress } = useScroll();
 
-  // 相機與漸層動畫同步（可依需要調整或移除）
-  const cameraDistance = useTransform(
-    scrollYProgress,
-    [0, 0.4],
-    [32, 4.4],
-    { ease: cubicBezier(0.4, 0, 0.2, 1) }
-  );
-  const springDistance = useSpring(cameraDistance, { stiffness: 100, damping: 30 });
-  const polarAngle = useTransform(
-    scrollYProgress,
-    [0, 0.4],
-    [125, 70],
-    { ease: cubicBezier(0.4, 0, 0.2, 1) }
-  );
-  const springPolar = useSpring(polarAngle, { stiffness: 80, damping: 25 });
-
-  // State variables to hold the numerical values from MotionValues
-  const [currentCDistance, setCurrentCDistance] = useState(springDistance.get());
-  const [currentCPolarAngle, setCurrentCPolarAngle] = useState(springPolar.get());
-
-  // Update state when MotionValue changes
-  useEffect(() => {
-    const unsubDistance = springDistance.on('change', (latest) => {
-      setCurrentCDistance(latest);
-    });
-    const unsubPolar = springPolar.on('change', (latest) => {
-      setCurrentCPolarAngle(latest);
-    });
-    return () => {
-      unsubDistance();
-      unsubPolar();
-    };
-  }, [springDistance, springPolar]);
 
   return (
     <ShaderGradientCanvas
       style={{ position: 'absolute', top: 0, width: '100%', height: '100%' }}
       pixelDensity={1}
-      fov={45}
+      fov={50}
     >
       <ShaderGradient
         animate="on"
@@ -56,13 +22,13 @@ function CustomGradient() {
         uStrength={3.4}
         uDensity={1.2}
         // 顏色
-        color1="#79cdcc"
-        color2="#285861"
-        color3="#ffffff"
+        color1="#b8ece1"
+        color2="#668da7"
+        color3="#edfffd"
         // 顆粒與環境
         grain="on"
         envPreset={undefined}
-        brightness={1.1}
+        brightness={0.8}
         // 背景與動畫
         uSpeed={0.2}
         // 範圍控制
@@ -132,7 +98,7 @@ const HeroSection = forwardRef<HTMLElement>((props, ref) => {
         style={{ opacity: buttonOpacity, y: buttonY }}
       >
         <Button className="font-tech text-white hover:text-primary transition text-sm md:text-base">
-          Scroll ↓
+          Enter ↓
         </Button>
       </motion.div>
     </section>
