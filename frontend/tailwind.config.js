@@ -14,15 +14,7 @@ module.exports = {
     './src/components/**/*.{js,jsx}',
     'src/**/*.{js,ts,jsx,tsx}'
   ],
-  // 強制保留這些 class（即使其它頁面沒使用）
-  safelist: [
-    'animate-fadeInUp',
-    'animate-fadeInDelay',
-    'animate-spin-slow',
-    'animate-spin-reverse',
-    'animate-spin-ultra-slow',
-    'bg-radial-glow',
-  ],
+
   theme: {
     extend: {
       colors: {
@@ -77,20 +69,9 @@ module.exports = {
           '50%':     { opacity: '1',   transform: 'translateY(-10px)' },
         },
       },
-      animation: {
-        // 自訂淡入上浮
-        fadeInUp:      'fadeInUp 1.5s ease-out',
-        // 文字延遲淡入
-        fadeInDelay:   'fadeInDelay 2s ease-out',
-        // 慢速正向旋轉
-        'spin-slow':   'spin-slow 4s linear infinite',
-        // 中速反向旋轉
-        'spin-reverse':'spin-reverse 6s linear infinite',
-        // 極慢速正向旋轉
-        'spin-ultra-slow':'spin-ultra-slow 20s linear infinite',
-        // 大跳動小跳動
-        fadeAndFloat: 'fadeAndFloat 1.5s ease-in-out infinite',
-        fadeAndFloatSm: 'fadeAndFloatSm 1.5s ease-in-out infinite',
+      container: {
+        center: true,
+        padding: '1.5rem',
       },
       backgroundImage: {
         // 徑向漸層背景
