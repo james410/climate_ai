@@ -32,15 +32,15 @@ body {
 }
 
 /* 噪點覆蓋層 */
-.noise-overlay {
+/* .noise-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10; /* 確保在主要內容下方 */
-  pointer-events: none;
-  background-image: url('/images/noise.png');
+  z-index: 1; /* 確保在主要內容下方 */
+  /* pointer-events: none;
+  background-image: transparent;
   background-repeat: repeat;
   background-size: 800px;
   opacity: 0.25;
   backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-}
+  -webkit-backdrop-filter: blur(5px); 
+} */

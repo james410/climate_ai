@@ -91,10 +91,10 @@ module.exports = {
         fadeAndFloat: 'fadeAndFloat 1.5s ease-in-out infinite',
         fadeAndFloatSm: 'fadeAndFloatSm 1.5s ease-in-out infinite',
       },
-      backgroundImage: {
-        // 徑向漸層背景
-        'radial-glow': 'radial-gradient(circle, rgba(255,255,255,0.2), transparent)',
-      },
+      // backgroundImage: {
+      //   // 徑向漸層背景
+      //   'radial-glow': 'radial-gradient(circle, rgba(255,255,255,0.2), transparent)',
+      // },
     },
   },
   // 暫時停用可能衝突的動畫插件

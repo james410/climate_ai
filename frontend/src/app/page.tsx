@@ -1,13 +1,11 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import Header from '@/layout/Header';
-import { useRef } from 'react';
 
-const FloatingBackground = dynamic(
-  () => import('@/ui/FloatingBackground'),
-  { ssr: false }
-);
+  // const FloatingBackground = dynamic(
+  //   () => import('@/ui/FloatingBackground'),
+  //   { ssr: false }
+  // );
 
 const HeroSection = dynamic(() => import('@/sections/HeroSection'));
 const DataSection = dynamic(() => import('@/sections/DataSection'));
@@ -23,15 +21,12 @@ const MapSection = dynamic(
 );
 
 export default function Home() {
-  const heroRef = useRef(null);
-
   return (
     <>
-      <Header heroRef={heroRef} /> {/* 傳遞 ref */}
-      <FloatingBackground className="fixed inset-0 z-0 pointer-events-none" />
+      {/* <FloatingBackground className="fixed inset-0 z-0 pointer-events-none" /> */}
       
       <main className="relative z-10 overflow-x-hidden scroll-smooth min-h-screen">
-        <HeroSection ref={heroRef} /> {/* 傳遞 ref 到 HeroSection */}
+        <HeroSection />
         <MapSection />
         <DataSection />
         <EducationSection />
