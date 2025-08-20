@@ -39,14 +39,7 @@ module.exports = {
       dropShadow: {
         glow: '0 0 10px rgba(176,136,255,.6)',
       },
-      container: {
-        center: true,
-        padding: '1.5rem',
-      },
-      backgroundImage: {
-        // 徑向漸層背景
-        'radial-glow': 'radial-gradient(circle, rgba(255,255,255,0.2), transparent)',
-      },
+      
     },
   },
   // 暫時停用可能衝突的動畫插件

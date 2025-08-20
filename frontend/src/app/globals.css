@@ -36,7 +36,7 @@ body {
 .noise-overlay {
   position: fixed;
   inset: 0;
-  z-index: 20; /* 確保在主要內容下方 */
+  z-index: 10; /* 確保在主要內容下方 */
   pointer-events: none;
   background-image: url('/images/noise.png');
   background-repeat: repeat;
