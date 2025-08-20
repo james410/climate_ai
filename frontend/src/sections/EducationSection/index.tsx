@@ -3,79 +3,88 @@
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import React, { useState, useEffect } from 'react';
-import MouseFollowCanvasBackground from './MouseFollowCanvasBackground';
-import CSSAnimatedBackground from './CSSAnimatedBackground';
+import MouseFollowCanvasBackground from './MouseFollowCanvasBackground'; // 滑鼠跟隨粒子版本
+import CSSAnimatedBackground from './CSSAnimatedBackground'; // CSS 動畫版本（最穩定）
 
-// 訊息介面定義
-interface ChatMessage {
+// 定義訊息類型
+interface Message {
   id: string | number;
   content: string;
   type: 'user' | 'bot' | 'system' | 'error' | 'loading';
   timestamp: Date;
 }
 
-// 系統狀態介面定義
-interface ChatSystemStatus {
+// 定義系統狀態類型
+interface SystemStatus {
   ready: boolean;
   status: 'connecting' | 'ready' | 'error';
   text: string;
 }
 
-export default function NewChatInterface() {
+export default function EducationSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: '-100px' });
   
-  // 聊天狀態管理
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // RAG 聊天機器人狀態
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [systemStatus, setSystemStatus] = useState<ChatSystemStatus>({
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>({
     ready: false,
     status: 'connecting',
-    text: '正在連接...'
+    text: '連接中...'
   });
-  const [sessionId] = useState<string>(`session_${Date.now()}`);
+  const [sessionId] = useState<string>(`user_${Date.now()}`);
   
   // DOM 引用
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
 
-  // 組件初始化
+  // 初始化聊天機器人
   useEffect(() => {
-    initializeChat();
+  checkSystemStatus();
   }, []);
 
-  // 自動滾動到最新訊息
+  // 自動滾動到底部
   useEffect(() => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // 初始化聊天系統
-  const initializeChat = async () => {
+  // 檢查系統狀態
+  const checkSystemStatus = async () => {
     try {
       const response = await fetch('http://localhost:5000/status');
       const data = await response.json();
-      
       if (data.ready) {
         setSystemStatus({
           ready: true,
           status: 'ready',
           text: '系統就緒'
         });
-        
-        // 添加歡迎訊息
-        if (messages.length === 0) {
-          addMessage('歡迎使用熱島小學堂 AI 助理！我可以回答關於都市熱島效應的問題。', 'bot');
-        }
+        // 僅在訊息為空時加入歡迎訊息
+        setMessages(prev => {
+          if (prev.length === 0) {
+            const welcome = '您好！歡迎來到熱島小學堂！我可以回答有關都市熱島效應的問題，請問有什麼可以幫助您的嗎？';
+            return [
+              {
+                id: Date.now() + Math.random(),
+                content: welcome,
+                type: 'bot',
+                timestamp: new Date()
+              }
+            ];
+          }
+          return prev;
+        });
       } else {
         setSystemStatus({
           ready: false,
           status: 'error',
-          text: '系統初始化中...'
+          text: '系統未就緒'
         });
-        addMessage('系統正在啟動中，請稍等片刻...', 'system');
+        addMessage('系統正在初始化中，請稍候...', 'system');
       }
     } catch (error) {
       setSystemStatus({
@@ -83,14 +92,22 @@ export default function NewChatInterface() {
         status: 'error',
         text: '連接失敗'
       });
-      addMessage('無法連接到伺服器，請檢查網路連線', 'error');
+      addMessage('無法連接到服務器，請檢查網路', 'error');
     }
   };
 
-  // 添加新訊息
-  const addMessage = (content: string, type: ChatMessage['type'], messageId?: string | number): string | number => {
-    const newMessage: ChatMessage = {
-      id: messageId || `msg_${Date.now()}_${Math.random()}`,
+  // 添加歡迎訊息（僅在 messages 為空時加入）
+  const addWelcomeMessage = () => {
+    if (messages.length === 0) {
+      const welcome = '您好！歡迎來到熱島小學堂！我可以回答有關都市熱島效應的問題，請問有什麼可以幫助您的嗎？';
+      addMessage(welcome, 'bot');
+    }
+  };
+
+  // 添加訊息
+  const addMessage = (content: string, type: Message['type'], id: string | number | null = null): string | number => {
+    const newMessage: Message = {
+      id: id || Date.now() + Math.random(),
       content,
       type,
       timestamp: new Date()
@@ -105,25 +122,25 @@ export default function NewChatInterface() {
     setMessages(prev => prev.filter(msg => msg.id !== messageId));
   };
 
-  // 發送訊息邏輯
-  const handleSendMessage = async () => {
-    const trimmedMessage = inputMessage.trim();
+  // 發送訊息
+  const sendMessage = async () => {
+    const message = inputMessage.trim();
     
-    if (!trimmedMessage || isLoading) return;
+    if (!message || isLoading) return;
 
-    // 檢查訊息長度
-    if (trimmedMessage.length > 500) {
-      addMessage('訊息長度超過限制（最多 500 字）', 'error');
+    // 驗證訊息長度
+    if (message.length > 500) {
+      addMessage('訊息長度不能超過 500 字', 'error');
       return;
     }
 
     // 顯示用戶訊息
-    addMessage(trimmedMessage, 'user');
+    addMessage(message, 'user');
     setInputMessage('');
-    setIsLoading(true);
 
-    // 顯示載入中訊息
-    const loadingId = addMessage('AI 正在思考中...', 'loading');
+    // 設置載入狀態
+    setIsLoading(true);
+    const loadingMsgId = addMessage('正在思考中...', 'loading');
 
     try {
       const response = await fetch('http://localhost:5000/chat', {
@@ -132,54 +149,54 @@ export default function NewChatInterface() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: trimmedMessage,
+          message: message,
           session_id: sessionId
         })
       });
 
-      const result = await response.json();
+      const data = await response.json();
       
       // 移除載入訊息
-      removeMessage(loadingId);
+      removeMessage(loadingMsgId);
 
-      if (result.success) {
-        addMessage(result.response, 'bot');
-        const sourceCount = result.sources || 0;
+      if (data.success) {
+        addMessage(data.response, 'bot');
+        const sources = data.sources || 0;
         setSystemStatus(prev => ({
           ...prev,
-          text: `回應完成 (參考了 ${sourceCount} 個資料來源)`
+          text: `已回應 (參考 ${sources} 個來源)`
         }));
       } else {
-        addMessage(`處理失敗: ${result.error}`, 'error');
+        addMessage(`錯誤: ${data.error}`, 'error');
         setSystemStatus(prev => ({
           ...prev,
           status: 'error',
-          text: '處理失敗'
+          text: '回應失敗'
         }));
       }
 
     } catch (error) {
-      removeMessage(loadingId);
-      addMessage('網路錯誤，請稍後再試', 'error');
+      removeMessage(loadingMsgId);
+      addMessage('網路錯誤，請稍後重試', 'error');
       setSystemStatus(prev => ({
         ...prev,
         status: 'error',
-        text: '網路異常'
+        text: '網路錯誤'
       }));
-      console.error('發送訊息時發生錯誤:', error);
+      console.error('發送訊息錯誤:', error);
     } finally {
       setIsLoading(false);
-      if (inputRef.current) {
-        inputRef.current.focus();
+      if (messageInputRef.current) {
+        messageInputRef.current.focus();
       }
     }
   };
 
-  // 清空對話
-  const handleClearChat = async () => {
+  // 清除對話
+  const clearChat = async () => {
     if (isLoading) return;
 
-    if (window.confirm('確定要清除所有對話紀錄嗎？')) {
+    if (window.confirm('確定要清除所有對話記錄嗎？')) {
       try {
         await fetch('http://localhost:5000/clear', {
           method: 'POST',
@@ -192,7 +209,7 @@ export default function NewChatInterface() {
         });
 
         setMessages([]);
-        addMessage('歡迎使用熱島小學堂 AI 助理！我可以回答關於都市熱島效應的問題。', 'bot');
+        addWelcomeMessage();
         setSystemStatus(prev => ({
           ...prev,
           text: '對話已清除'
@@ -204,223 +221,171 @@ export default function NewChatInterface() {
     }
   };
 
-  // 檢查系統狀態
-  const handleCheckStatus = async () => {
+  // 檢查狀態
+  const checkStatus = async () => {
     try {
       const response = await fetch('http://localhost:5000/status');
       const data = await response.json();
       
-      let statusReport = '📊 系統狀態報告:\n\n';
-      statusReport += `🔗 整體狀態: ${data.ready ? '✅ 正常運行' : '❌ 異常'}\n`;
-      statusReport += `🧠 語言模型: ${data.llm_loaded ? '✅ 已載入' : '❌ 未載入'}\n`;
-      statusReport += `🗃️ 向量資料庫: ${data.vectorstore_loaded ? '✅ 已載入' : '❌ 未載入'}\n`;
-      statusReport += `🆔 會話識別碼: ${sessionId}`;
+      let statusInfo = '系統狀態:\n';
+      statusInfo += `• 整體狀態: ${data.ready ? '✅ 就緒' : '❌ 未就緒'}\n`;
+      statusInfo += `• 語言模型: ${data.llm_loaded ? '✅ 已載入' : '❌ 未載入'}\n`;
+      statusInfo += `• 向量資料庫: ${data.vectorstore_loaded ? '✅ 已載入' : '❌ 未載入'}\n`;
+      statusInfo += `• 會話 ID: ${sessionId}`;
       
-      alert(statusReport);
+      alert(statusInfo);
       
     } catch (error) {
-      alert('❌ 無法取得系統狀態資訊');
+      alert('無法獲取系統狀態');
     }
   };
 
-  // 鍵盤事件處理
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+  // 處理鍵盤事件
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter' && !isLoading) {
-      handleSendMessage();
+      sendMessage();
     }
   };
 
-  // 訊息渲染組件
-  const MessageCard = ({ message }: { message: ChatMessage }) => {
+  // 渲染訊息
+  const renderMessage = (message: Message) => {
     const { id, content, type } = message;
     
+    // 訊息框樣式依 type 動態設定
+    let msgClass = "message mb-3 p-3 rounded-2xl max-w-[80%] break-words decoration-double font-bold border-2 border-green-100 shadow-lg ";
+    if (type === 'user') {
+      msgClass += "bg-white/10 text-white ml-auto rounded-br-sm";
+    } else if (type === 'bot') {
+      msgClass += "bg-white/10 text-white rounded-bl-sm";
+    } else if (type === 'system') {
+      msgClass += "bg-blue-50 text-white text-center text-sm mx-auto";
+    } else if (type === 'error') {
+      msgClass += "bg-red-50 text-white border border-red-200";
+    } else {
+      msgClass += "bg-gray-50 text-white";
+    }
+
     return (
       <motion.div
         key={id}
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full mb-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={msgClass}
       >
-        <div
-          className={`
-            w-full p-5 rounded-3xl shadow-xl border-2 backdrop-blur-md transition-all duration-300 hover:shadow-2xl
-            ${type === 'user' 
-              ? 'bg-gradient-to-br from-blue-500/30 via-blue-600/30 to-purple-600/30 text-white border-blue-300 transform hover:scale-[1.02]'
-              : type === 'bot'
-              ? 'bg-white/30 text-gray-800 border-gray-300 hover:bg-white/40'
-              : type === 'system'
-              ? 'bg-gradient-to-r from-cyan-100/30 to-blue-100/30 text-cyan-900 border-cyan-300'
-              : type === 'error'
-              ? 'bg-gradient-to-r from-red-100/30 to-pink-100/30 text-red-800 border-red-300'
-              : 'bg-gray-100/30 text-gray-700 border-gray-300'
-            }
-          `}
-        >
-          {/* 訊息標籤列 */}
-          <div className="flex items-center mb-3">
-            {type === 'user' && (
-              <div className="flex items-center text-blue-100">
-                <span className="text-lg mr-2">👤</span>
-                <span className="font-semibold text-sm">使用者</span>
-              </div>
-            )}
-            {type === 'bot' && (
-              <div className="flex items-center text-gray-600">
-                <span className="text-lg mr-2">🤖</span>
-                <span className="font-semibold text-sm">熱島小學堂 AI</span>
-              </div>
-            )}
-            {type === 'system' && (
-              <div className="flex items-center text-cyan-700">
-                <span className="text-lg mr-2">ℹ️</span>
-                <span className="font-semibold text-sm">系統通知</span>
-              </div>
-            )}
-            {type === 'error' && (
-              <div className="flex items-center text-red-700">
-                <span className="text-lg mr-2">⚠️</span>
-                <span className="font-semibold text-sm">錯誤訊息</span>
-              </div>
-            )}
+        {type === 'loading' ? (
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-1 border-primary border-t-transparent"></div>
+            <span className="italic">{content}</span>
           </div>
-          
-          {/* 訊息內容 */}
-          {type === 'loading' ? (
-            <div className="flex items-center space-x-3">
-              <div className="inline-block w-4 h-4 border-3 border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
-              <span className="text-gray-600 italic font-medium">AI 正在分析您的問題...</span>
-            </div>
-          ) : (
-            <div className="text-lg leading-relaxed font-medium whitespace-pre-wrap">
-              {content}
-            </div>
-          )}
-        </div>
+        ) : (
+          content
+        )}
       </motion.div>
     );
   };
 
   return (
-    <section ref={sectionRef} className="py-20 px-4 bg-transparent relative overflow-hidden min-h-screen">
-      {/* 背景層 - 最底層 z-index */}
-      <div className="absolute inset-0 w-full h-full z-0">
-        <CSSAnimatedBackground />
-      </div>
-      <div className="absolute inset-0 w-full h-full z-1">
-        <MouseFollowCanvasBackground />
-      </div>
+    <section ref={sectionRef} className="py-20 px-4 bg-transparent relative overflow-visible">
+      {/* 雙層背景效果 - 同時使用兩個背景創造豐富層次 */}
+      {/* 底層：CSS 動畫背景 - 提供鼠標跟隨和基礎漸變效果 */}
+      <CSSAnimatedBackground />
+      
+      {/* 上層：滑鼠跟隨粒子背景 - 提供互動式粒子效果 */}
+      <MouseFollowCanvasBackground />
 
-      {/* 內容層 - 確保在背景之上 */}
-      <div className="max-w-5xl mx-auto relative z-20" style={{ transform: 'translateY(-100px)' }}>
-        {/* 標題區域 */}
+      <div className="max-w-4xl mx-auto relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: -50 }}
+          initial={{ opacity: 0, y: 60 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="text-center mb-16"
+          transition={{ duration: 0.8 }}
+          className="text-center mb-12"
         >
-          <h1 className="text-[clamp(2.5rem,7vw,4rem)] font-black bg-gradient-to-r from-emerald-400 via-blue-500 to-purple-600 text-transparent bg-clip-text mb-4 tracking-tight">
-            🏙️ Urban Heat School
-          </h1>
-          <p className="text-xl text-gray-700 font-semibold bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full inline-block">
-            熱島小學堂智能助理
-          </p>
+          <h3 className="text-[clamp(2rem,6vw,3.5rem)] font-extrabold bg-gradient-to-b from-red-300 to-green-300 text-transparent bg-clip-text mb-6">
+            Urban Heat School 熱島小學堂
+          </h3>
+      
         </motion.div>
 
-        {/* 主要聊天介面 - 縮小到70%並增加圓角 */}
+        {/* RAG 聊天機器人界面 */}
         <motion.div
-          initial={{ opacity: 0, y: 60, scale: 0.9 }}
-          animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
-          transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-          className="bg-transparent backdrop-blur-xl rounded-[2rem] shadow-2xl overflow-hidden mx-auto border-2 border-white/40 relative z-30"
-          style={{ 
-            width: '84%', 
-            maxWidth: '672px', 
-            height: '60vh',
-            minHeight: '500px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
+          initial={{ opacity: 0, y: 40 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.2 }}
+            className="bg-white/0 backdrop-blur-lg rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+          style={{ height: '70vh' }}
         >
-          {/* 聊天室標題欄 - 強化綠色背景，增加圓角 */}
-          <div 
-            className="text-white py-1 px-3 text-center flex-shrink-0 relative overflow-hidden z-10"
-            style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.5) 0%)',
-              boxShadow: '0 4px 20px rgba(16, 185, 129, 0.1)',
-              borderTopLeftRadius: '1rem',
-              borderTopRightRadius: '1rem'
-            }}
-          >
-            {/* 移除黑色遮罩，讓綠色更鮮明 */}
-            <div className="relative z-10">
-              <h2 className="text-lg font-semibold flex items-center justify-center">
-                <span className="mr-2 text-lg">🤖</span>
-                RAG 智能聊天助理
-                <div 
-                  className={`ml-2 w-2 h-2 rounded-full ${
-                    systemStatus.status === 'ready' ? 'bg-green-400 animate-pulse' : 
-                    systemStatus.status === 'error' ? 'bg-red-400' : 'bg-yellow-400 animate-bounce'
-                  }`}
-                ></div>
-              </h2>
+          {/* 聊天機器人標題區 */}
+            <div className="bg-gradient-to-r from-green-200/60 via-green-300/60 to-green-100/60 text-black p-6 text-center">
+            <h4 className="text-xl font-bold mb-2">🤖 熱島小學堂 AI 助理</h4>
+            <div className="flex items-center justify-center space-x-2 text-sm opacity-90">
+              <div 
+                className={`w-2 h-2 rounded-full ${
+                  systemStatus.status === 'ready' ? 'bg-green-400' : 
+                  systemStatus.status === 'error' ? 'bg-red-400' : 'bg-yellow-400'
+                }`}
+              ></div>
+              <span>{systemStatus.text}</span>
             </div>
           </div>
 
-          {/* 訊息顯示區域 - 確保可讀性 */}
+          {/* 聊天訊息區 */}
           <div 
-            ref={messagesContainerRef}
-            className="flex-1 p-6 overflow-y-auto relative z-10"
-            style={{ 
-              background: 'rgba(248, 249, 250, 0.3)',
-              scrollBehavior: 'smooth'
-            }}
+            ref={chatMessagesRef}
+            className="flex-1 p-6 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white/0"
+            style={{ height: 'calc(100% - 200px)' }}
           >
-            <div className="space-y-0">
-              {messages.map(message => (
-                <MessageCard key={message.id} message={message} />
-              ))}
-            </div>
+            {messages.map(message => renderMessage(message))}
           </div>
 
-          {/* 輸入控制區域 - 確保在最上層 */}
-          <div className="p-6 bg-white/90 backdrop-blur-md border-t-4 border-white/50 flex-shrink-0 relative z-10">
-            {/* 輸入框區域 */}
-            <div className="flex gap-4 items-center mb-4">
-              <textarea
-                ref={inputRef}
+          {/* 輸入區 */}
+          <div className="p-6 bg-green-100/80 backdrop-blur-sm border-t border-gray-200/50">
+            <div className="flex space-x-3 mb-3">
+              <input
+                ref={messageInputRef}
+                type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="flex-1 px-16 py-16 border-3 border-gray-300 rounded-2xl outline-none text-gray-800 text-xl font-medium transition-all duration-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-200 disabled:bg-gray-200 disabled:text-gray-500 placeholder:text-gray-400 shadow-lg resize-none"
-                placeholder="輸入您關於都市熱島效應的問題..."
+                onKeyPress={handleKeyPress}
+                // 使用者文字輸入設定
+                className="flex-1 px-4 py-3 bg-gray-800 text-white font-bold border border-gray-700 rounded-full outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:bg-gray-700 disabled:text-gray-400 placeholder:text-gray-400"
+                placeholder="請輸入您關於都市熱島的問題..."
                 disabled={!systemStatus.ready || isLoading}
-                rows={4}
-                style={{ minHeight: '40px' }}
               />
               <motion.button
-                whileHover={{ 
-                  scale: !systemStatus.ready || isLoading ? 1 : 1.08,
-                  rotate: !systemStatus.ready || isLoading ? 0 : 5
-                }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleSendMessage}
+                onClick={sendMessage}
                 disabled={!systemStatus.ready || isLoading}
-                className="px-8 h-full bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-bold text-lg transition-all duration-300 hover:shadow-xl disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed min-w-[120px] shadow-lg flex items-center justify-center"
-                style={{ minHeight: '70px' }}
+                className="px-6 py-3 bg-green-200 text-green-800 rounded-full font-bold transition-all hover:bg-green-300 disabled:bg-gray-400 disabled:cursor-not-allowed min-w-[80px]"
               >
-                {isLoading ? '處理中...' : '發送 🚀'}
+                {isLoading ? '傳送中...' : '發送'}
               </motion.button>
             </div>
             
-            {/* 控制按鈕區域 */}
-            <div className="flex justify-center gap-4">
-              
+            {/* 控制按鈕 */}
+            <div className="flex justify-center space-x-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={clearChat}
+                className="px-4 py-2 text-sm border border-primary text-primary rounded-full hover:bg-primary hover:text-black transition-all"
+              >
+                🗑️ 清除對話
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={checkStatus}
+                className="px-4 py-2 text-sm border border-primary text-primary rounded-full hover:bg-primary hover:text-black transition-all"
+              >
+                📊 檢查狀態
+              </motion.button>
             </div>
           </div>
         </motion.div>
       </div>
+
     </section>
   );
 }

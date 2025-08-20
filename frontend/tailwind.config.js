@@ -8,11 +8,16 @@ module.exports = {
     './src/pages/**/*.{ts,tsx}',
     // Components 底下所有組件
     './src/components/**/*.{ts,tsx}',
+    './src/sections/**/*.{ts,tsx}',
+    './src/layout/**/*.{ts,tsx}',
+    './src/ui/**/*.{ts,tsx}',
+    './src/hooks/**/*.{ts,tsx}',
+    './src/lib/**/*.{ts,tsx}',
     // 如果有使用 JS 或 JSX 檔案，也一併掃描
     './src/app/**/*.{js,jsx}',
     './src/pages/**/*.{js,jsx}',
     './src/components/**/*.{js,jsx}',
-    'src/**/*.{js,ts,jsx,tsx}'
+    './src/**/*.{js,ts,jsx,tsx}'
   ],
 
   theme: {
@@ -23,10 +28,10 @@ module.exports = {
         surface2: 'rgb(246, 191, 199)',      // 石英粉，secondary panel
         glass:    'rgba(255,255,255,0.075)', // frosted overlay
         temp: {
-          low:     ' #EAB090',  // 0%-24%
-          medium:  ' #E27777',  // 25%-49%
-          high:    ' #AE567D',  // 50%-74%
-          extreme: ' #724B80',  // 75%-100%
+          low:     '#EAB090',  // 0%-24%
+          medium:  '#E27777',  // 25%-49%
+          high:    '#AE567D',  // 50%-74%
+          extreme: '#724B80',  // 75%-100%
         },
       },
       fontFamily: {
@@ -42,6 +47,5 @@ module.exports = {
       
     },
   },
-  // 暫時停用可能衝突的動畫插件
-  // plugins: [ require('tailwindcss-animate') ],
+  plugins: [ require('tailwindcss-animate') ],
 }
