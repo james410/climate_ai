@@ -23,10 +23,10 @@ module.exports = {
         surface2: 'rgb(246, 191, 199)',      // 石英粉，secondary panel
         glass:    'rgba(255,255,255,0.075)', // frosted overlay
         temp: {
-          low:     ' #a7d7d9',  // 冰川藍 0%-24%
-          medium:  ' #c2ccc6',  // 白霧綠 25%-49%
-          high:    ' #d9c5c8',  // 薄藤紫 50%-74%
-          extreme: ' #f6bfc7',  // 石英粉 75%-100%
+          low:     ' #EAB090',  // 0%-24%
+          medium:  ' #E27777',  // 25%-49%
+          high:    ' #AE567D',  // 50%-74%
+          extreme: ' #724B80',  // 75%-100%
         },
       },
       fontFamily: {
@@ -38,36 +38,6 @@ module.exports = {
       },
       dropShadow: {
         glow: '0 0 10px rgba(176,136,255,.6)',
-      },
-      keyframes: {
-        fadeInUp: {
-          '0%':   { opacity: '0', transform: 'translateY(30px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        fadeInDelay: {
-          '0%,50%': { opacity: '0' },
-          '100%':   { opacity: '1' },
-        },
-        'spin-slow': {
-          from: { transform: 'rotate(0deg)' },
-          to:   { transform: 'rotate(360deg)' },
-        },
-        'spin-reverse': {
-          from: { transform: 'rotate(360deg)' },
-          to:   { transform: 'rotate(0deg)' },
-        },
-        'spin-ultra-slow': {
-          from: { transform: 'rotate(0deg)' },
-          to:   { transform: 'rotate(360deg)' },
-        },
-        fadeAndFloat: {
-          '0%,100%': { opacity: '0.6', transform: 'translateY(0)' },
-          '50%':     { opacity: '1',   transform: 'translateY(-20px)' },
-        },
-       fadeAndFloatSm: {
-          '0%,100%': { opacity: '0.8', transform: 'translateY(0)' },
-          '50%':     { opacity: '1',   transform: 'translateY(-10px)' },
-        },
       },
       container: {
         center: true,

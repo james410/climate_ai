@@ -719,210 +719,122 @@ export default function MapSection() {
         </div>
       </div>
 
-      <style jsx>{`
-        .info-sidebar { 
-          position: absolute; 
-          top: 45px; 
-          right: 10px; 
-          width: 320px; 
-          height: calc(100% - 100px); 
-          border-radius: 8px; 
-          font-size: 12px; 
-          transform: translateX(calc(100% + 35px)); 
-          transition: transform 0.3s ease; 
-          z-index: 1000; 
-          box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); 
-          font-family: 'Courier New', monospace; 
-          backdrop-filter: blur(10px); 
+      <div className={`
+        absolute top-[45px] right-[10px] w-[320px] h-[calc(100%-100px)] rounded-lg text-xs
+        transform transition-transform duration-300 ease-in-out z-[1000]
+        shadow-[0_0_20px_rgba(0,212,255,0.3)] font-mono backdrop-blur-md
+        ${sidebarOpen ? 'translate-x-0' : 'translate-x-[calc(100%+35px)]'}
+        ${mode === 'population'
+          ? 'bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0f1419] border-2 border-[#00d4ff] text-[#00d4ff]'
+          : 'bg-gradient-to-br from-[#0a0e27] via-[#2d1f3a] to-[#1a0f19] border-2 border-[#ff6b9d] text-[#ff6b9d]'
         }
-        .info-sidebar.open { 
-          transform: translateX(0); 
-        }
-        .info-sidebar.mode-population { 
-          background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%); 
-          border: 2px solid #00d4ff; 
-          color: #00d4ff; 
-        }
-        .info-sidebar.mode-time { 
-          background: linear-gradient(135deg, #0a0e27 0%, #2d1f3a 50%, #1a0f19 100%); 
-          border: 2px solid #ff6b9d; 
-          color: #ff6b9d; 
-        }
-        .sidebar-header { 
-          padding: 15px; 
-          border-bottom: 2px solid currentColor; 
-          background: rgba(255,255,255,0.05); 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: center; 
-          position: relative; 
-        }
-        .sidebar-header::before { 
-          content: ''; 
-          position: absolute; 
-          top: 0; 
-          left: 0; 
-          right: 0; 
-          height: 2px; 
-          background: linear-gradient(90deg, transparent, currentColor, transparent); 
-        }
-        .sidebar-header::after { 
-          content: ''; 
-          position: absolute; 
-          bottom: 0; 
-          left: 0; 
-          right: 0; 
-          height: 1px; 
-          background: linear-gradient(90deg, transparent, currentColor, transparent); 
-          opacity: 0.5; 
-        }
-        .sidebar-title { 
-          font-size: 14px; 
-          font-weight: bold; 
-          text-transform: uppercase; 
-          letter-spacing: 1px; 
-          text-shadow: 0 0 10px currentColor; 
-        }
-        .close-btn { 
-          background: transparent; 
-          border: 1px solid currentColor; 
-          color: currentColor; 
-          font-size: 16px; 
-          width: 28px; 
-          height: 28px; 
-          border-radius: 4px; 
-          cursor: pointer; 
-          transition: all 0.2s; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-        }
-        .close-btn:hover { 
-          background: currentColor; 
-          color: #0a0e27; 
-          box-shadow: 0 0 15px currentColor; 
-        }
-        .sidebar-content { 
-          padding: 15px; 
-          height: calc(100% - 70px); 
-          overflow-y: auto; 
-        }
-        .no-selection { 
-          text-align: center; 
-          font-size: 14px; 
-          color: rgba(255,255,255,0.85); 
-          margin-top: 30px; 
-        }
-        .section {
-          margin-bottom: 20px;
-          background: rgba(255,255,255,0.05);
-          padding: 12px;
-          border-radius: 8px;
-          border: 1px solid rgba(255,255,255,0.1);
-        }
-        .section-title {
-          font-size: 13px;
-          margin-bottom: 10px;
-          font-weight: bold;
-          color: currentColor;
-          text-shadow: 0 0 5px currentColor;
-        }
-        .info-grid {
-          display: grid;
-          gap: 6px;
-          font-size: 11px;
-        }
-        .info-grid div {
-          color: rgba(255,255,255,0.9);
-        }
-        .info-grid strong {
-          color: currentColor;
-          font-weight: bold;
-        }
-        .result-display { 
-          background: rgba(255,255,255,0.1); 
-          padding: 10px; 
-          border-radius: 6px; 
-          font-size: 11px;
-        }
-        .result-display .temp { 
-          font-size: 1.3em; 
-          font-weight: bold; 
-          margin: 8px 0; 
-          color: currentColor;
-          text-shadow: 0 0 8px currentColor;
-        }
-        .loading {
-          text-align: center;
-          color: rgba(255,255,255,0.7);
-          font-style: italic;
-        }
-        .error-section {
-          background: rgba(255,0,0,0.1);
-          padding: 10px;
-          border-radius: 6px;
-          border: 1px solid rgba(255,0,0,0.3);
-        }
-        .error-msg {
-          color: #ff6b6b;
-          font-size: 11px;
-          margin-bottom: 8px;
-        }
-        .url-details {
-          margin-top: 8px;
-        }
-        .url-details summary {
-          cursor: pointer;
-          font-size: 10px;
-          color: rgba(255,255,255,0.6);
-          margin-bottom: 5px;
-        }
-        .url-list {
-          font-size: 9px;
-          color: rgba(255,255,255,0.5);
-          max-height: 80px;
-          overflow-y: auto;
-          background: rgba(0,0,0,0.3);
-          padding: 5px;
-          border-radius: 4px;
-        }
-        .url-list div {
-          margin-bottom: 2px;
-          word-break: break-all;
-        }
-        .api-data {
-          font-size: 11px;
-          color: rgba(255,255,255,0.9);
-        }
-        .api-data div {
-          margin-bottom: 6px;
-        }
-        .api-data .temp {
-          font-size: 1.3em;
-          font-weight: bold;
-          color: currentColor;
-          text-shadow: 0 0 8px currentColor;
-        }
-        .mode-info {
-          font-size: 11px;
-          color: rgba(255,255,255,0.8);
-        }
-        .mode-info div {
-          margin-bottom: 6px;
-        }
-        .info-text {
-          font-style: italic;
-          color: rgba(255,255,255,0.7);
-          font-size: 10px;
-        }
+        lg:right-0 lg:w-[94%]
+      `}>
+        <div className="
+          p-[15px] border-b-2 border-current bg-white/5 flex justify-between items-center relative
+          before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px] before:bg-gradient-to-r before:from-transparent before:via-current before:to-transparent
+          after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-current after:to-transparent after:opacity-50
+        ">
+          <div className="text-sm font-bold uppercase tracking-wide text-shadow-[0_0_10px_currentColor]">
+            {mode === 'population' ? '🌱 植被溫度分析' : '⏰ 時間溫度預測'}
+          </div>
+          <button
+            className="
+              bg-transparent border border-current text-current text-base w-[28px] h-[28px]
+              rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center
+              hover:bg-current hover:text-[#0a0e27] hover:shadow-[0_0_15px_currentColor]
+            "
+            onClick={closeSidebar}
+            aria-label="關閉側欄"
+          >
+            ×
+          </button>
+        </div>
 
-        @media (max-width: 1024px) {
-          .info-sidebar { 
-            right: 0; 
-            width: 94%; 
-          }
-        }
-      `}</style>
+        <div className="p-[15px] h-[calc(100%-70px)] overflow-y-auto">
+          {!currentFeature && <div className="text-center text-white/85 mt-[30px] text-sm">點擊任一網格查看資料 📍</div>}
+
+          {currentFeature && (
+            <div>
+              {/* 基本位置資訊 */}
+              <div className="mb-5 bg-white/5 p-3 rounded-lg border border-white/10">
+                <h4 className="text-sm mb-2 font-bold text-current text-shadow-[0_0_5px_currentColor]">📍 位置資訊</h4>
+                <div className="grid gap-1.5 text-xs">
+                  <div className="text-white/90">row_id: <strong className="text-current font-bold">{rowId}</strong></div>
+                  <div className="text-white/90">column_id: <strong className="text-current font-bold">{colId}</strong></div>
+                  <div className="text-white/90">經緯度: {centerLL ? `${centerLL.lat.toFixed(4)}, ${centerLL.lng.toFixed(4)}` : '—'}</div>
+                </div>
+              </div>
+
+
+              {/* Flask API 資料 */}
+              <div className="mb-5 bg-white/5 p-3 rounded-lg border border-white/10">
+                <h4 className="text-sm mb-2 font-bold text-current text-shadow-[0_0_5px_currentColor]">🔗 溫度資訊</h4>
+                {apiLoading ? (
+                  <div className="text-center text-white/70 italic">讀取中…</div>
+                ) : apiError ? (
+                  <div className="bg-red-500/10 p-2.5 rounded-md border border-red-500/30">
+                    <div className="text-red-400 text-xs mb-2">錯誤：{apiError}</div>
+                    {!!triedUrls.length && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-[10px] text-white/60 mb-1.5">檢視嘗試過的網址</summary>
+                        <div className="text-[9px] text-white/50 max-h-20 overflow-y-auto bg-black/30 p-1.5 rounded-sm">
+                          {triedUrls.slice(0, 5).map((u, i) => <div key={i} className="mb-0.5 break-all">{u}</div>)}
+                          {triedUrls.length > 5 && <div>...還有 {triedUrls.length - 5} 個</div>}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs text-white/90">
+                    <div className="mb-1.5">年月: {apiData?.metadata?.year ?? '—'} / {apiData?.metadata?.month ?? '—'}</div>
+                    {typeof flaskTemp === 'number' ? (
+                      <div className="text-lg font-bold text-current text-shadow-[0_0_8px_currentColor]">🌡️ 溫度: <strong>{flaskTemp.toFixed(1)} °C</strong></div>
+                    ) : (
+                      <div>🌡️ 溫度: —</div>
+                    )}
+                    {mode === 'population' && (
+                      <div>植被: {apiData?.metadata?.vegetation ?? '—'}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 模式特定資訊 */}
+              <div className="mb-5 bg-white/5 p-3 rounded-lg border border-white/10">
+                <h4 className="text-sm mb-2 font-bold text-current text-shadow-[0_0_5px_currentColor]">
+                  {mode === 'population' ? '🌱 植被影響' : '⏰ 時間變化'}
+                </h4>
+                <div className="text-xs text-white/80">
+                  <div className="mb-1.5">
+                    {mode === 'population' ? (
+                      <div>當前設定: {veg}% 植被覆蓋</div>
+                    ) : (
+                      <div>
+                        {activeSlider === 'past' ? (
+                          <span className="italic text-white/70 text-[10px]">📊 基於 {pastYear} 年歷史資料</span>
+                        ) : (
+                          <span className="italic text-white/70 text-[10px]">🔮 預測至 {futureYear} 年</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="italic text-white/70 text-[10px]">
+                    {mode === 'population' ? (
+                      '植被越高 → 降溫效果越明顯'
+                    ) : (
+                      activeSlider === 'past'
+                        ? '回顧過去溫度變化趨勢'
+                        : '基於氣候模型預測未來'
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
     </section>
   );
 }
