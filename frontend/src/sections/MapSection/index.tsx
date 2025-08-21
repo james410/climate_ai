@@ -115,11 +115,11 @@ export default function MapSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setMounted(true); }, []);
 
-  const { scrollYProgress } = useScroll({ 
-    target: sectionRef, 
-    offset: ['start end', 'end start'] 
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start end', 'end start']
   });
-  
+
   const titleOpacity = useTransform(
     scrollYProgress,
     [0.1, 0.3, 0.4, 0.6, 0.9, 1],
@@ -567,29 +567,23 @@ export default function MapSection() {
         {/* 新增：著色功能開關（預設關閉） */}
         <button
           onClick={() => {
-            setEnableAdvancedColor(v => !v);
-            setTimeout(() => applyLayerColorsRef.current(), 0);// 立即觸發重新著色，不等待滑鼠移動
+            setEnableAdvancedColor(v => {
+              const next = !v;
+              // 開啟時固定採用「類型」著色，關閉則回原本溫度色塊
+              if (next) {
+                setColorMode('type');
+                colorModeRef.current = 'type';
+              }
+              return next;
+            });
+            setTimeout(() => applyLayerColorsRef.current(), 0); // 立即重繪
           }}
           className={`px-4 py-2 rounded-lg font-semibold transition-all max-md:w-full max-md:max-w-sm ${enableAdvancedColor ? 'bg-cyan-500 text-black' : 'text-gray-300 border border-gray-700 hover:text-white'}`}
           title="按一下切換到 index.tsx 的著色功能；再按回到原本色塊"
         >
-          著色功能
+          代表性分區
         </button>
 
-        {/* 只有開啟進階著色才顯示模式按鈕 */}
-        {enableAdvancedColor && (
-          <div className="flex items-center gap-2 max-md:w-full max-md:justify-center">
-            <span className="text-xs text-gray-400">著色：</span>
-            <button onClick={() => setColorMode('type')}
-              className={`px-3 py-1 text-xs rounded ${colorMode === 'type' ? 'bg-cyan-500 text-black' : 'text-gray-400 border border-gray-700 hover:text-white'}`}>
-              按「類型」
-            </button>
-            <button onClick={() => setColorMode('temperature')}
-              className={`px-3 py-1 text-xs rounded ${colorMode === 'temperature' ? 'bg-rose-500 text-black' : 'text-gray-400 border border-gray-700 hover:text-white'}`}>
-              按「溫度」
-            </button>
-          </div>
-        )}
       </div>
 
       {/* 地圖容器卡片 */}
@@ -618,7 +612,7 @@ export default function MapSection() {
               <div className="flex items-center gap-4 max-md:w-full max-md:flex-col max-md:gap-2">
                 <span className="text-xs text-gray-400 whitespace-nowrap">🌱 植被覆蓋率</span>
                 <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-                  <input type="range" min={0} max={100} step={1} value={veg}
+                  <input type="range" min={0} max={100} step={10} value={veg}
                     onChange={(e) => setVeg(Number(e.target.value))}
                     className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
                     style={{ background: `linear-gradient(to right, #22c55e 0%, #22c55e ${veg}%, #374151 ${veg}%, #374151 100%)` }} />
@@ -674,10 +668,10 @@ export default function MapSection() {
         </div>
 
         {/* 地圖容器 */}
-        <div 
-          id="leaflet-map" 
-          ref={mapRef} 
-          className="w-full mt-[80px] rounded-2xl overflow-hidden border border-gray-800 max-md:mt-4" 
+        <div
+          id="leaflet-map"
+          ref={mapRef}
+          className="w-full mt-[80px] rounded-2xl overflow-hidden border border-gray-800 max-md:mt-4"
           style={{ height: 'clamp(400px, 60vh, 600px)' }}
         />
 
