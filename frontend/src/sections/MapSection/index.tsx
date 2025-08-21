@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import type { Feature, FeatureCollection, GeoJsonProperties, Polygon, MultiPolygon } from 'geojson';
 import L, { GeoJSON as LGeoJSON, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -115,10 +115,28 @@ export default function MapSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setMounted(true); }, []);
 
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start end', 'end start'] });
-  const titleOpacity = useTransform(scrollYProgress, [0.1, 0.3, 0.4, 0.6, 0.9, 1], [0, 1, 1, 0.8, 0.8, 0]);
-  const titleScale = useTransform(scrollYProgress, [0.1, 0.3, 0.4, 0.6], [0.8, 1, 0.9, 0.9]);
-  const descriptionOpacity = useTransform(scrollYProgress, [0.1, 0.3, 0.4, 0.5], [0, 1, 1, 0]);
+  const { scrollYProgress } = useScroll({ 
+    target: sectionRef, 
+    offset: ['start end', 'end start'] 
+  });
+  
+  const titleOpacity = useTransform(
+    scrollYProgress,
+    [0.1, 0.3, 0.4, 0.6, 0.9, 1],
+    [0, 1, 1, 0.8, 0.8, 0]
+  );
+
+  const titleScale = useTransform(
+    scrollYProgress,
+    [0.1, 0.3, 0.4, 0.6],
+    [0.8, 1, 0.9, 0.9]
+  );
+
+  const descriptionOpacity = useTransform(
+    scrollYProgress,
+    [0.1, 0.3, 0.4, 0.5],
+    [0, 1, 1, 0]
+  );
 
   // UI 狀態
   const [mode, setMode] = useState<'population' | 'time'>('time');
@@ -162,7 +180,7 @@ export default function MapSection() {
   const geoJsonDataRef = useRef<FeatureCollection | null>(null);
   const monthRef = useRef(month);
   const selectedIdRef = useRef<string | null>(null);
-  const applyLayerColorsRef = useRef<() => void>(() => {});
+  const applyLayerColorsRef = useRef<() => void>(() => { });
 
   useEffect(() => { geoJsonDataRef.current = geoJsonData; }, [geoJsonData]);
   useEffect(() => { monthRef.current = month; applyLayerColorsRef.current(); }, [month]);
@@ -182,7 +200,7 @@ export default function MapSection() {
         typeByCellRef.current = m;
         if (enableAdvancedColor) applyLayerColorsRef.current();
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { aborted = true; };
   }, [enableAdvancedColor]);
 
@@ -321,14 +339,22 @@ export default function MapSection() {
         .then(r => r.json())
         .then((geojson: FeatureCollection) => {
           setGeoJsonData(geojson);
+          const features = geojson.features as GridFeature[];
+          const { min, max } = computeMinMax(features, 10); // 使用初始月份10
           const gridLayer = L.geoJSON(geojson as any, {
-            style: () => ({ color: '#f59e0b', weight: 2, fillColor: 'transparent', fillOpacity: 0 }),
+            // 初始就顯示溫度顏色塗層
+            style: (feature: any) => {
+              const temp = getMonthTemp(feature, 10); // 使用初始月份10
+              if (typeof temp === 'number') {
+                const percent = toPercent(temp, min, max);
+                const color = colorByPercent(percent);
+                return { color: DEFAULT_STROKE, weight: 2, fillColor: color, fillOpacity: 0.6 };
+              }
+              return { color: DEFAULT_STROKE, weight: 2, fillColor: 'transparent', fillOpacity: 0 };
+            },
             onEachFeature: (feature: any, layer: any) => {
-              // 類型 tooltip（若 CSV 有）
-              try {
-                const t = getTypeForFeature(feature as GridFeature);
-                if (t) layer.bindTooltip(`Type: ${t}`, { sticky: true });
-              } catch {}
+              // 不顯示 Type tooltip（避免 "Type: city" 之類的字）
+              try { /* intentionally no tooltip */ } catch { }
 
               layer.on('click', (e: any) => {
                 const lf = e.target?.feature as GridFeature; if (!lf) return;
@@ -344,7 +370,7 @@ export default function MapSection() {
                     setCenterLL(b.getCenter());
                     map.fitBounds(b, { maxZoom: 14, animate: true });
                   }
-                } catch {}
+                } catch { }
                 setSidebarOpen(true);
 
                 selectionLayerRef.current?.clearLayers();
@@ -372,7 +398,7 @@ export default function MapSection() {
               map.fitBounds(b, { padding: [10, 10] });
               map.panBy([-200, 0]);
             }
-          } catch {}
+          } catch { }
         })
         .catch(console.error);
     });
@@ -476,29 +502,52 @@ export default function MapSection() {
     setSelectedCellId(null);
   };
 
+  const isInView = useInView(sectionRef, { once: false });
+
   return (
-    <section id="map-section" ref={sectionRef} className="relative overflow-hidden h-[200vh] bg-transparent" style={{ opacity: mounted ? 1 : 0 }}>
-      {/* 標題層 */}
-      <div className="sticky top-0 h-screen flex items-center justify-center pointer-events-none z-0">
+    <section
+      id="map-section"
+      ref={sectionRef}
+      className="relative overflow-hidden h-[200vh] bg-transparent"
+      style={{ opacity: mounted ? 1 : 0 }}
+    >
+      {/* 標題層 - 使用 index.tsx 格式 */}
+      <div className="sticky top-0 h-screen flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.8, x: 0, y: 0 }}
-          style={{ opacity: mounted ? titleOpacity : 0, scale: mounted ? titleScale : 0.8 }}
+          style={{
+            opacity: mounted ? titleOpacity : 0,
+            scale: mounted ? titleScale : 0.8
+          }}
           className="text-center px-4 w-full flex flex-col items-center justify-center"
         >
-          <h2 className="font-display text-white tracking-wider text-center" style={{ fontSize: 'clamp(1.2rem, 6vw, 4rem)', lineHeight: '1.2' }}>
+          <h2
+            className="font-display text-white tracking-wider text-center"
+            style={{
+              fontSize: 'clamp(1rem, 6vw, 4rem)',
+              lineHeight: '1.2'
+            }}
+          >
             Heat Island Model
           </h2>
-          <motion.p className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4" style={{ opacity: mounted ? descriptionOpacity : 0, fontSize: 'clamp(0.8rem, 2vw, 1.8rem)', lineHeight: '1.4' }}>
+          <motion.p
+            className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4"
+            style={{
+              opacity: mounted ? descriptionOpacity : 0,
+              fontSize: 'clamp(0.7rem, 2vw, 1.8rem)',
+              lineHeight: '1.4'
+            }}
+          >
             理解雙北十年的溫度脈動 ↔ 以植物為核心預測未來場景
           </motion.p>
         </motion.div>
       </div>
 
       {/* 模式切換 + 著色功能 */}
-      <div className="flex justify-center mb-8 gap-4">
+      <div className="flex justify-center mb-8 gap-4 px-4 max-md:flex-col max-md:items-center max-md:gap-3">
         <button
           onClick={() => setMode('time')}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all ${mode === 'time'
+          className={`px-6 py-3 rounded-lg font-semibold transition-all max-md:w-full max-md:max-w-sm ${mode === 'time'
             ? 'bg-green-500 text-black'
             : 'text-gray-400 border border-gray-700 hover:text-white'
             }`}
@@ -507,7 +556,7 @@ export default function MapSection() {
         </button>
         <button
           onClick={() => setMode('population')}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all ${mode === 'population'
+          className={`px-6 py-3 rounded-lg font-semibold transition-all max-md:w-full max-md:max-w-sm ${mode === 'population'
             ? 'bg-green-500 text-black'
             : 'text-gray-400 border border-gray-700 hover:text-white'
             }`}
@@ -517,8 +566,11 @@ export default function MapSection() {
 
         {/* 新增：著色功能開關（預設關閉） */}
         <button
-          onClick={() => { setEnableAdvancedColor(v => !v); applyLayerColorsRef.current(); }}
-          className={`px-4 py-2 rounded-lg font-semibold transition-all ${enableAdvancedColor ? 'bg-cyan-500 text-black' : 'text-gray-300 border border-gray-700 hover:text-white'}`}
+          onClick={() => {
+            setEnableAdvancedColor(v => !v);
+            setTimeout(() => applyLayerColorsRef.current(), 0);// 立即觸發重新著色，不等待滑鼠移動
+          }}
+          className={`px-4 py-2 rounded-lg font-semibold transition-all max-md:w-full max-md:max-w-sm ${enableAdvancedColor ? 'bg-cyan-500 text-black' : 'text-gray-300 border border-gray-700 hover:text-white'}`}
           title="按一下切換到 index.tsx 的著色功能；再按回到原本色塊"
         >
           著色功能
@@ -526,7 +578,7 @@ export default function MapSection() {
 
         {/* 只有開啟進階著色才顯示模式按鈕 */}
         {enableAdvancedColor && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 max-md:w-full max-md:justify-center">
             <span className="text-xs text-gray-400">著色：</span>
             <button onClick={() => setColorMode('type')}
               className={`px-3 py-1 text-xs rounded ${colorMode === 'type' ? 'bg-cyan-500 text-black' : 'text-gray-400 border border-gray-700 hover:text-white'}`}>
@@ -560,78 +612,114 @@ export default function MapSection() {
         </div>
 
         {/* 中間控制拉桿區域（原樣） */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-black/90 rounded-lg p-4 text-white border border-gray-700">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-black/90 rounded-lg p-4 text-white border border-gray-700 max-md:relative max-md:left-auto max-md:transform-none max-md:mt-4 max-md:mx-4">
           {mode === 'population' ? (
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6 max-md:flex-col max-md:gap-3">
+              <div className="flex items-center gap-4 max-md:w-full max-md:flex-col max-md:gap-2">
                 <span className="text-xs text-gray-400 whitespace-nowrap">🌱 植被覆蓋率</span>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
                   <input type="range" min={0} max={100} step={1} value={veg}
                     onChange={(e) => setVeg(Number(e.target.value))}
-                    className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                    className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
                     style={{ background: `linear-gradient(to right, #22c55e 0%, #22c55e ${veg}%, #374151 ${veg}%, #374151 100%)` }} />
                   <span className="text-sm font-bold text-green-400 min-w-[3rem]">{veg}%</span>
                 </div>
               </div>
-              <div className="h-6 w-px bg-gray-600/70" />
-              <div className="flex items-center gap-3">
+              <div className="h-6 w-px bg-gray-600/70 max-md:h-px max-md:w-6" />
+              <div className="flex items-center gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
                 <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
-                <input type="range" min={1} max={12} step={1} value={month}
-                  onChange={(e) => setMonth(Number(e.target.value))}
-                  className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-                  style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
-                <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
+                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+                  <input type="range" min={1} max={12} step={1} value={month}
+                    onChange={(e) => setMonth(Number(e.target.value))}
+                    className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+                    style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
+                  <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-6 max-md:flex-col max-md:gap-3">
+              <div className="flex items-center gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
                 <div className="flex gap-2">
                   <button onClick={() => setActiveSlider('past')}
                     className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'past' ? 'bg-blue-500 text-white' : 'text-gray-400 border border-gray-600 hover:text-white'}`}>📊 歷史</button>
                   <button onClick={() => setActiveSlider('future')}
                     className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'future' ? 'bg-purple-500 text-white' : 'text-gray-400 border border-gray-600 hover:text-white'}`}>🔮 未來</button>
                 </div>
-                <input type="range" min={activeSlider === 'past' ? 2013 : 2025} max={activeSlider === 'past' ? 2023 : 2035} step={1}
-                  value={activeSlider === 'past' ? pastYear : futureYear}
-                  onChange={(e) => { const v = Number(e.target.value); activeSlider === 'past' ? setPastYear(v) : setFutureYear(v); }}
-                  className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-                  style={{ background: activeSlider === 'past'
-                    ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((pastYear - 2013) / 10) * 100}%, #374151 ${((pastYear - 2013) / 10) * 100}%, #374151 100%)`
-                    : `linear-gradient(to right, #a855f7 0%, #a855f7 ${((futureYear - 2025) / 10) * 100}%, #374151 ${((futureYear - 2025) / 10) * 100}%, #374151 100%)` }} />
-                <span className={`text-sm font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-purple-400'}`}>{activeSlider === 'past' ? pastYear : futureYear}年</span>
+                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+                  <input type="range" min={activeSlider === 'past' ? 2013 : 2025} max={activeSlider === 'past' ? 2023 : 2035} step={1}
+                    value={activeSlider === 'past' ? pastYear : futureYear}
+                    onChange={(e) => { const v = Number(e.target.value); activeSlider === 'past' ? setPastYear(v) : setFutureYear(v); }}
+                    className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+                    style={{
+                      background: activeSlider === 'past'
+                        ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((pastYear - 2013) / 10) * 100}%, #374151 ${((pastYear - 2013) / 10) * 100}%, #374151 100%)`
+                        : `linear-gradient(to right, #a855f7 0%, #a855f7 ${((futureYear - 2025) / 10) * 100}%, #374151 ${((futureYear - 2025) / 10) * 100}%, #374151 100%)`
+                    }} />
+                  <span className={`text-sm font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-purple-400'}`}>{activeSlider === 'past' ? pastYear : futureYear}年</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
                 <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
-                <input type="range" min={1} max={12} step={1} value={month}
-                  onChange={(e) => setMonth(Number(e.target.value))}
-                  className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-                  style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
-                <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
+                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+                  <input type="range" min={1} max={12} step={1} value={month}
+                    onChange={(e) => setMonth(Number(e.target.value))}
+                    className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+                    style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
+                  <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* 地圖容器 */}
-        <div id="leaflet-map" ref={mapRef} className="w-full h-[520px] mt-[80px] rounded-2xl overflow-hidden border border-gray-800" />
+        <div 
+          id="leaflet-map" 
+          ref={mapRef} 
+          className="w-full mt-[80px] rounded-2xl overflow-hidden border border-gray-800 max-md:mt-4" 
+          style={{ height: 'clamp(400px, 60vh, 600px)' }}
+        />
 
-        {/* 進階著色圖例（開啟時顯示） */}
-        {enableAdvancedColor && (
-          <div className="absolute bottom-4 left-4 z-20 bg-black/85 rounded-lg p-3 text-white border border-gray-700">
-            <div className="text-xs mb-2">圖例：{colorMode === 'type' ? '類型' : '溫度'}</div>
-            {colorMode === 'type' ? (
-              <div className="flex gap-4 flex-wrap">
-                {(['mountain','coast','city','suburb'] as const).map(key => (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className="inline-block w-3 h-3 rounded" style={{ background: TYPE_COLORS[key] }} />
-                    <span className="text-xs capitalize">{key}</span>
-                  </div>
-                ))}
+        {/* 溫度圖例 - 常駐顯示，只有類型模式時才被類型圖例取代 */}
+        {!enableAdvancedColor || colorMode === 'temperature' ? (
+          <div className="absolute top-4 right-4 z-30 bg-black/85 rounded-lg px-2 py-2 text-white border border-gray-700">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-xs">溫度圖例 ({month}月)</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded" style={{ backgroundColor: '#EAB090' }}></div>
+                  <span className="text-xs">低溫</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded" style={{ backgroundColor: '#E27777' }}></div>
+                  <span className="text-xs">中低溫</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded" style={{ backgroundColor: '#AE567D' }}></div>
+                  <span className="text-xs">中高溫</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded" style={{ backgroundColor: '#724B80' }}></div>
+                  <span className="text-xs">高溫</span>
+                </div>
               </div>
-            ) : (
-              <div className="text-[11px] text-gray-300">低 → 高：#EAB090 → #724B80</div>
-            )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* 類型圖例 - 只有開啟進階著色且為類型模式時顯示 */}
+        {enableAdvancedColor && colorMode === 'type' && (
+          <div className="absolute top-4 right-4 z-30 bg-black/85 rounded-lg p-3 text-white border border-gray-700">
+            <div className="text-xs mb-2">圖例：類型</div>
+            <div className="flex gap-4 flex-wrap">
+              {(['mountain', 'coast', 'city', 'suburb'] as const).map(key => (
+                <div key={key} className="flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded" style={{ background: TYPE_COLORS[key] }} />
+                  <span className="text-xs capitalize">{key}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -643,13 +731,13 @@ export default function MapSection() {
           </div>
 
           <div className="sidebar-content">
-            {!currentFeature && <div className="no-selection">點擊任一網格查看資料 🔍</div>}
+            {!currentFeature && <div className="no-selection">點擊任一網格查看資料 📍</div>}
 
             {currentFeature && (
               <div>
                 {/* 基本位置資訊 */}
                 <div className="section">
-                  <h4 className="section-title">🔍 位置資訊</h4>
+                  <h4 className="section-title">📍 位置資訊</h4>
                   <div className="info-grid">
                     <div>row_id: <strong>{rowId}</strong></div>
                     <div>column_id: <strong>{colId}</strong></div>
@@ -678,7 +766,7 @@ export default function MapSection() {
                   ) : (
                     <div className="api-data">
                       <div>年月: {mode === 'population' ? '2022' : (apiData?.metadata?.year ?? '—')} / {apiData?.metadata?.month ?? '—'}</div>
-                      
+
                       {/* 顯示三個溫度值 */}
                       <div className="temp-grid">
                         <div className="temp-item">
@@ -694,7 +782,7 @@ export default function MapSection() {
                           <span className="temp-value">{typeof flaskTemps.low === 'number' ? `${flaskTemps.low.toFixed(1)} °C` : '—'}</span>
                         </div>
                       </div>
-                      
+
                       {mode === 'population' && (<div>植被: {apiData?.metadata?.vegetation ?? '—'}</div>)}
                     </div>
                   )}
