@@ -5,6 +5,7 @@ import Header from '@/layout/Header';
 import { useRef } from 'react';
 
 const HeroSection = dynamic(() => import('@/sections/HeroSection'));
+const IntroSection = dynamic(() => import('@/sections/IntroSection'));
 const DataSection = dynamic(() => import('@/sections/DataSection'));
 const EducationSection = dynamic(() => import('@/sections/EducationSection'));
 const Footer = dynamic(() => import('@/layout/Footer'));
@@ -20,10 +21,9 @@ const MapSection = dynamic(
 export default function Home() {
   return (
     <>
-      {/* <FloatingBackground className="fixed inset-0 z-0 pointer-events-none" /> */}
-      
-      <main className="relative z-10 overflow-x-hidden scroll-smooth min-h-screen">
+      <main className="relative z-20 scroll-smooth min-h-screen">
         <HeroSection />
+        <IntroSection />
         <MapSection />
         <DataSection />
         <EducationSection />

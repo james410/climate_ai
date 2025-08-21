@@ -2,50 +2,77 @@
 module.exports = {
   darkMode: 'class',
   content: [
-    // App Router 下所有 TSX 檔案
     './src/app/**/*.{ts,tsx}',
-    // Pages Router（若有使用）
     './src/pages/**/*.{ts,tsx}',
-    // Components 底下所有組件
     './src/components/**/*.{ts,tsx}',
     './src/sections/**/*.{ts,tsx}',
     './src/layout/**/*.{ts,tsx}',
     './src/ui/**/*.{ts,tsx}',
     './src/hooks/**/*.{ts,tsx}',
     './src/lib/**/*.{ts,tsx}',
-    // 如果有使用 JS 或 JSX 檔案，也一併掃描
     './src/app/**/*.{js,jsx}',
     './src/pages/**/*.{js,jsx}',
     './src/components/**/*.{js,jsx}',
     './src/**/*.{js,ts,jsx,tsx}'
   ],
-
   theme: {
     extend: {
       colors: {
-        primary:  'rgb(138, 240, 244)',      // 天空藍
-        surface:  'rgb(37, 38, 40)',         // base black
-        surface2: 'rgb(246, 191, 199)',      // 石英粉，secondary panel
-        glass:    'rgba(255,255,255,0.075)', // frosted overlay
+        // 主要色彩系統
+        primary: '#67ced2',
+        secondary: '#668da7',
+        accent: '#5eb3b4',
+        // 表面色彩
+        surface: '#1a1d1f',
+        surface2: '#edfffd',
+        // 文字色彩
+        text: {
+          primary: 'rgb(245, 247, 247)',
+          secondary: 'rgb(158, 173, 184)',
+          muted: '#9bb4c1',
+        },
+        // 語義化顏色
+        success: '#659e7a',
+        warning: '#d6c599',
+        error: '#b3858d',
+        info: '#8af0f4',
+        // 溫度色彩
         temp: {
-          low:     '#EAB090',  // 0%-24%
-          medium:  '#E27777',  // 25%-49%
-          high:    '#AE567D',  // 50%-74%
-          extreme: '#724B80',  // 75%-100%
+          low: 'rgb(102, 189, 218)',
+          medium: 'rgb(236, 190, 144)',
+          high: '#b3858d',
+          extreme: 'rgb(239, 100, 158)',
         },
       },
       fontFamily: {
-        mono: ['"IBM Plex Mono"', 'monospace'],
-        sans: ['"Space Grotesk"', 'sans-serif'],
+        mono: ['"DroidSansMono"', 'monospace'],
+        sans: ['"Inter"', '"Source Sans Pro"', 'sans-serif'],
+        serif: ['"Source Serif Pro"', '"Merriweather"', 'serif'],
+        // 中文思源黑體
+        chinese: ['"Noto Sans TC"', '"Source Han Sans"', '"PingFang TC"', '"Microsoft JhengHei"', 'sans-serif'],
       },
       fontSize: {
-        display: ['7rem', { lineHeight: '1.2' }], // gigantic headings
+        display: ['7rem', { lineHeight: '1.2' }],
+        title01: ['clamp(1rem, 6vw, 4rem)', { lineHeight: '1.2' }],
+        subtitle01: ['clamp(0.7rem, 2vw, 1.8rem)', { lineHeight: '1.4' }],
       },
       dropShadow: {
-        glow: '0 0 10px rgba(176,136,255,.6)',
+        glow: '0 0 10px rgba(138, 240, 244, 0.6)',
       },
-      
     },
   },
-  plugins: [ require('tailwindcss-animate') ],
-}
+  plugins: [
+    require('tailwindcss-animate'),
+    function({ addComponents }) {
+      addComponents({
+        '.title01': {
+          '@apply font-chinese text-title01 text-text-primary tracking-wider text-center': {},
+        },
+        '.subtitle01': {
+          '@apply font-chinese text-subtitle01 text-text-secondary tracking-wide text-center font-normal max-w-2xl mx-auto mt-4': {},
+        }
+      });
+    }
+  ],
+};
+
