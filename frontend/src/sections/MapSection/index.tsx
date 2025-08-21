@@ -511,38 +511,6 @@ export default function MapSection() {
       className="relative overflow-hidden h-[200vh] bg-transparent"
       style={{ opacity: mounted ? 1 : 0 }}
     >
-      {/* 標題層 - 使用 index.tsx 格式 */}
-      <div className="sticky top-0 h-screen flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, x: 0, y: 0 }}
-          style={{
-            opacity: mounted ? titleOpacity : 0,
-            scale: mounted ? titleScale : 0.8
-          }}
-          className="text-center px-4 w-full flex flex-col items-center justify-center"
-        >
-          <h2
-            className="font-display text-white tracking-wider text-center"
-            style={{
-              fontSize: 'clamp(1rem, 6vw, 4rem)',
-              lineHeight: '1.2'
-            }}
-          >
-            Heat Island Model
-          </h2>
-          <motion.p
-            className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4"
-            style={{
-              opacity: mounted ? descriptionOpacity : 0,
-              fontSize: 'clamp(0.7rem, 2vw, 1.8rem)',
-              lineHeight: '1.4'
-            }}
-          >
-            理解雙北十年的溫度脈動 ↔ 以植物為核心預測未來場景
-          </motion.p>
-        </motion.div>
-      </div>
-
       {/* 模式切換 + 著色功能 */}
       <div className="flex justify-center mb-8 gap-4 px-4 max-md:flex-col max-md:items-center max-md:gap-3">
         <button
