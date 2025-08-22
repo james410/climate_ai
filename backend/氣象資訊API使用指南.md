@@ -11,6 +11,7 @@
 | 年度天氣狀況 | `/annual/<weather_conditions>/<year>/<column_id>+<row_id>` | 依年份與格點 ID 查詢特定天氣狀況的全年數據 |
 | 年度溫度數據 | `/annual/temp/<year>/<column_id>+<row_id>` | 依年份與格點 ID 查詢所有溫度相關數據的全年資料 |
 | 格點溫度地圖 | `/formap/<type>/<year>/<month>` | 依年月查詢所有格點的指定類型溫度數據 |
+| NDVI溫度地圖 | `/formap/NDVI/<type>/<month>` | 依月份查詢所有格點的指定類型NDVI預測溫度數據 |
 
 `column_id` 與 `row_id` 對應到地理網格，系統會自動提供對應的經緯度與海拔資訊。
 
@@ -161,6 +162,37 @@ GET http://localhost:5000/formap/Temperature/2020/7
 - Temperature → 溫度類型（可選：Temperature, Low_Temp, High_Temp, Apparent_Temperature, Apparent_Temperature_High, Apparent_Temperature_Low）
 - 2020 → 年份
 - 7 → 月份
+
+回應範例：
+
+```json
+{
+    "0": {
+        "0": 25.6,
+        "1": 26.1,
+        "2": 27.3
+    },
+    "1": {
+        "0": 25.8,
+        "1": 26.3,
+        "2": 27.5
+    }
+}
+```
+
+回應數據說明：
+- 第一層鍵（如 "0", "1"）代表 column_id
+- 第二層鍵（如 "0", "1", "2"）代表 row_id
+- 數值為該格點的指定類型溫度
+
+### NDVI溫度地圖 
+
+```bash
+GET http://localhost:5000/formap/NDVI/Temperature_Predicted/11
+```
+
+- Temperature_Predicted → 溫度類型（可選：Temperature_Predicted, High_Temp_Predicted,Low_Temp_Predicted, Apparent_Temperature, Apparent_Temperature_High, Apparent_Temperature_Low）
+- 11 → 月份
 
 回應範例：
 
