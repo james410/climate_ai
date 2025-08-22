@@ -11,7 +11,7 @@
 | 年度天氣狀況 | `/annual/<weather_conditions>/<year>/<column_id>+<row_id>` | 依年份與格點 ID 查詢特定天氣狀況的全年數據 |
 | 年度溫度數據 | `/annual/temp/<year>/<column_id>+<row_id>` | 依年份與格點 ID 查詢所有溫度相關數據的全年資料 |
 | 格點溫度地圖 | `/formap/<type>/<year>/<month>` | 依年月查詢所有格點的指定類型溫度數據 |
-| NDVI溫度地圖 | `/formap/NDVI/<type>/<month>` | 依月份查詢所有格點的指定類型NDVI預測溫度數據 |
+| NDVI溫度地圖 | `/formap/NDVI/<type>/<vegetation>/<month>` | 依月份查詢所有格點的指定類型NDVI預測溫度數據 |
 
 `column_id` 與 `row_id` 對應到地理網格，系統會自動提供對應的經緯度與海拔資訊。
 
@@ -188,10 +188,11 @@ GET http://localhost:5000/formap/Temperature/2020/7
 ### NDVI溫度地圖 
 
 ```bash
-GET http://localhost:5000/formap/NDVI/Temperature_Predicted/11
+GET http://localhost:5000/formap/NDVI/Temperature_Predicted/0.1/11
 ```
 
 - Temperature_Predicted → 溫度類型（可選：Temperature_Predicted, High_Temp_Predicted,Low_Temp_Predicted, Apparent_Temperature, Apparent_Temperature_High, Apparent_Temperature_Low）
+- 0.1 → 植被覆蓋率
 - 11 → 月份
 
 回應範例：
