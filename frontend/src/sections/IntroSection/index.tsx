@@ -29,18 +29,18 @@ export default function Intro() {
             className="font-chinese text-white leading-relaxed tracking-wider mb-8"
             style={{
               fontSize: 'clamp(1.25rem,5vw,1.5rem)',
-              lineHeight: '1.4',
+              lineHeight: '1.6',
             }}
           >
-            我們在城市裡行走，<br />
+            我們在城市裡行走，
             彷彿它不曾說話。<br />
             但每一次高溫，每一場雨，<br />
             都是它在回應我們的沉默。
           </h2>
           <p
-            className="font-mono text-[#8af0f4] leading-relaxed tracking-wide"
+            className="font-mono text-text-secondary leading-relaxed tracking-wide"
             style={{
-              fontSize: 'clamp(0.875rem,4vw,1.333rem)',
+              fontSize: 'clamp(0.75rem,4vw,1.333rem)',
               lineHeight: '1.4',
             }}
           >
@@ -65,16 +65,16 @@ export default function Intro() {
             className="font-chinese text-white leading-relaxed tracking-wider mb-8"
             style={{
               fontSize: 'clamp(1.25rem,5vw,1.5rem)',
-              lineHeight: '1.4',
+              lineHeight: '1.6',
             }}
           >
             你願意，聽聽它過去的記憶，<br />
             和我們能共同寫下的未來嗎？
           </h2>
           <p
-            className="font-mono text-[#8af0f4] leading-relaxed tracking-wide"
+            className="font-mono text-text-secondary leading-relaxed tracking-wide"
             style={{
-              fontSize: 'clamp(0.875rem,4vw,1.333rem)',
+              fontSize: 'clamp(0.75rem,4vw,1.333rem)',
               lineHeight: '1.4',
             }}
           >

@@ -19,17 +19,16 @@ module.exports = {
     extend: {
       colors: {
         // 主要色彩系統
-        primary: '#67ced2',
-        secondary: '#668da7',
-        accent: '#5eb3b4',
+        primary: '#2f4f4f',
+        secondary: '#d18b8b',
+        accent: '#faebd7',
         // 表面色彩
-        surface: '#1a1d1f',
-        surface2: '#edfffd',
+        surface: '#5aa2a2',
+        surface2: '#efadad',
         // 文字色彩
         text: {
-          primary: 'rgb(245, 247, 247)',
-          secondary: 'rgb(158, 173, 184)',
-          muted: '#9bb4c1',
+          primary: '#ffffff',
+          secondary: '#f0f4f5',
         },
         // 語義化顏色
         success: '#659e7a',
@@ -40,7 +39,7 @@ module.exports = {
         temp: {
           low: 'rgb(102, 189, 218)',
           medium: 'rgb(236, 190, 144)',
-          high: '#b3858d',
+          high: ' #b3858d',
           extreme: 'rgb(239, 100, 158)',
         },
       },

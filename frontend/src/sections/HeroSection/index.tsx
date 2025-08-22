@@ -20,13 +20,13 @@ function CustomGradient() {
         uStrength={3.4}
         uDensity={1.2}
         // 顏色
-        color1="#8af0f4"
-        color2="#668da7"
-        color3="#edfffd"
+        color1="#61c2c2"
+        color2="#d18b8b"
+        color3="#faebd7"
         // 顆粒與環境
         grain="off"
         envPreset={undefined}
-        brightness={0.7}
+        brightness={0.9}
         // 背景與動畫
         uSpeed={0.2}
         // 範圍控制
