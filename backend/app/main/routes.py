@@ -204,48 +204,8 @@ def get_yearly_temperature_data(year, colrow):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@bp.route('/formap/<string:type>/<int:year>/<int:month>', methods=['GET'])
-def get_temperature_map(type, year, month):
-    try:
-        # 檢查溫度類型是否有效
-        valid_types = [
-            "Temperature",
-            "Low_Temp",
-            "High_Temp",
-            "Apparent_Temperature",
-            "Apparent_Temperature_High",
-            "Apparent_Temperature_Low"
-        ]
-        if type not in valid_types:
-            return jsonify({
-                "error": f"Invalid temperature type. Must be one of: {', '.join(valid_types)}"
-            }), 400
-
-        # 查詢指定年月的所有網格數據
-        records = HistoryData.query.filter_by(
-            Year=year,
-            Month=month
-        ).order_by(HistoryData.column_id, HistoryData.row_id).all()
-
-        if not records:
-            return jsonify({"error": "Data not found 查無資料"}), 404
-
-        # 建立回應數據
-        result = {}
-        for record in records:
-            col_key = str(record.column_id)
-            if col_key not in result:
-                result[col_key] = {}
-            # 使用動態的溫度類型
-            result[col_key][str(record.row_id)] = getattr(record, type)
-
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@bp.route('/formap/NDVI/<string:type>/<int:month>', methods=['GET'])
-def get_ndvi_temperature_map(type, month):
+@bp.route('/formap/NDVI/<string:type>/<path:veg>/<int:month>', methods=['GET'])
+def get_ndvi_temperature_map(type, veg, month):
     try:
         # 檢查溫度類型是否有效
         valid_types = [
@@ -261,23 +221,61 @@ def get_ndvi_temperature_map(type, month):
                 "error": f"Invalid temperature type. Must be one of: {', '.join(valid_types)}"
             }), 400
 
-        # 查詢指定月份的所有網格數據
+        # 檢查 vegetation_coverage 是否為有效的浮點數
+        try:
+            vegetation_coverage = float(veg)
+        except ValueError:
+            return jsonify({"error": "Invalid vegetation coverage value 植被覆蓋率格式無效"}), 400
+
+        # 先嘗試找完全匹配植被覆蓋率的資料
         records = NDVITemp.query.filter_by(
-            Month=month
+            Month=month,
+            Vegetation_Coverage=vegetation_coverage
         ).order_by(NDVITemp.column_id, NDVITemp.row_id).all()
+
+        if not records:
+            # 如果沒有完全匹配的，對每個網格點找最接近的植被覆蓋率
+            # 首先獲取該月份所有的網格點位置
+            grid_positions = db.session.query(
+                NDVITemp.column_id, 
+                NDVITemp.row_id
+            ).filter_by(Month=month).distinct().all()
+            
+            records = []
+            for column_id, row_id in grid_positions:
+                # 對每個網格點找最接近的植被覆蓋率資料
+                closest_record = NDVITemp.query.filter_by(
+                    Month=month,
+                    column_id=column_id,
+                    row_id=row_id
+                ).order_by(
+                    func.abs(NDVITemp.Vegetation_Coverage - vegetation_coverage)
+                ).first()
+                
+                if closest_record:
+                    records.append(closest_record)
 
         if not records:
             return jsonify({"error": "Data not found 查無資料"}), 404
 
         # 建立回應數據
         result = {}
+        vegetation_info = {}  # 用於調試，記錄實際使用的植被覆蓋率
+        
         for record in records:
             col_key = str(record.column_id)
             if col_key not in result:
                 result[col_key] = {}
+                vegetation_info[col_key] = {}
+            
             # 使用動態的溫度類型
             result[col_key][str(record.row_id)] = getattr(record, type)
+            # 記錄實際使用的植被覆蓋率（用於調試）
+            vegetation_info[col_key][str(record.row_id)] = record.Vegetation_Coverage
 
+        # 在開發階段可以加入這個來看實際的植被覆蓋率分布
+        # return jsonify({"temperature_data": result, "actual_vegetation": vegetation_info, "requested_vegetation": vegetation_coverage})
+        
         return jsonify(result)
 
     except Exception as e:
