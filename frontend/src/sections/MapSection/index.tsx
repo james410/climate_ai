@@ -6,6 +6,20 @@ import type { Feature, FeatureCollection, GeoJsonProperties, Polygon, MultiPolyg
 import L, { GeoJSON as LGeoJSON, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// === 批次地圖資料（時間模式）=== 
+type CellKey = string;
+const makeCellKey = (r: number, c: number) => `${r}-${c}`;
+
+// 以 (history|prediction):(year):(month) 當快取 key
+// 用 ref 是為了避免重新 render 造成 Map 重置
+const timeGridCacheRef = { current: new Map<string, Map<CellKey, number>>() };
+// 中央化管理未來可替換的端點路徑 —— 只改這裡就能換路徑
+const VEG_FORMAP_URL = (base: string, month: number, veg01: number) =>
+  `${base}/formap/NDVI/Temperature_Predicted/${veg01.toFixed(2)}/${String(month).padStart(2, '0')}`;
+
+// 植被的批次結果快取：(month, veg01) → Map<"row-col", value>
+const vegGridCacheRef = { current: new Map<string, Map<CellKey, number>>() };
+
 /* =================== 工具 & 型別 =================== */
 
 type GridFeature = Feature<Polygon | MultiPolygon, GeoJsonProperties & Record<string, unknown>>;
@@ -52,6 +66,36 @@ async function fetchJSON<T = any>(url: string): Promise<T> {
     throw new Error('Invalid JSON from server');
   }
 }
+
+async function fetchVegFormapBatch(month: number, vegPercent: number) {
+  // 若你的 UI "veg" 是 0~100，保留這行；若已是 0~1，改成 const veg01 = vegPercent;
+  const veg01 = Math.max(0, Math.min(1, (typeof (vegPercent as any) === 'number' ? vegPercent : 0) / 100));
+
+  // 建議把 key 也改成 <veg01>:<MM>（與路徑一致，方便 debug）
+  const cacheKey = `${veg01.toFixed(2)}:${String(month).padStart(2, '0')}`;
+  const cached = vegGridCacheRef.current.get(cacheKey);
+  if (cached) return cached;
+
+  const base = getBases()[0];
+  const url = VEG_FORMAP_URL(base, month, veg01); // ← 這裡自動套新路徑
+  const payload = await fetchJSON<Record<string, Record<string, number | null>>>(url);
+
+  const map = new Map<string, number>();
+  for (const cStr in payload) {
+    const rows = payload[cStr] || {};
+    for (const rStr in rows) {
+      const v = rows[rStr];
+      const r = Number(rStr), c = Number(cStr);
+      if (Number.isFinite(r) && Number.isFinite(c) && typeof v === 'number') {
+        map.set(makeCellKey(r, c), v);
+      }
+    }
+  }
+  vegGridCacheRef.current.set(cacheKey, map);
+  return map;
+}
+
+
 
 const USE_PROXY = process.env.NEXT_PUBLIC_USE_PROXY === '1';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5000';
@@ -187,6 +231,17 @@ export default function MapSection() {
   useEffect(() => { selectedIdRef.current = selectedCellId; applyLayerColorsRef.current(); }, [selectedCellId]);
   useEffect(() => { applyLayerColorsRef.current(); }, [enableAdvancedColor]);
 
+  // 儲存「時間模式」當前批次資料（row-col -> value）
+  const timeGridRef = useRef<Map<CellKey, number> | null>(null);
+
+  // 植被模式下，目前月+植被率的全圖資料
+  const vegGridRef = useRef<Map<CellKey, number> | null>(null);
+
+
+  // 讀取 mode 的最新值用（避免閉包過期）
+  const modeRef = useRef(mode);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+
   /* --- CSV 載入（和狀態都在元件內） --- */
   useEffect(() => {
     let aborted = false;
@@ -246,38 +301,52 @@ export default function MapSection() {
       if (!data || !grid) return;
 
       const features = data.features as GridFeature[];
-      const { min, max } = computeMinMax(features, m);
 
+      // ---- A) 取得每個格子的值（時間模式優先用 DB 批次）----
+      const dbMap = timeGridRef.current; // 只有時間模式才會被設定
+      const getValueForFeature = (f: GridFeature): number | undefined => {
+        // 1) 若是時間模式且 DB 有資料 → 直接用 DB 值
+        if (modeRef.current === 'time' && dbMap) {
+          const p: any = f.properties || {};
+          const key = makeCellKey(Number(p.row_id), Number(p.column_id));
+          const v = dbMap.get(key);
+          if (typeof v === 'number') return v;
+        }
+        // 2) 後備：使用 GeoJSON 內建欄位（舊機制）
+        return getMonthTemp(f, m);
+      };
+
+      // ---- B) 計算 min/max 作為顏色標準化依據 ----
+      const valuesForRange: number[] = [];
+      for (const f of features) {
+        const v = getValueForFeature(f);
+        if (typeof v === 'number') valuesForRange.push(v);
+      }
+      const min = valuesForRange.length ? Math.min(...valuesForRange) : 0;
+      const max = valuesForRange.length ? Math.max(...valuesForRange) : 1;
+      const safeMin = (min === max) ? (min - 0.5) : min;
+      const safeMax = (min === max) ? (max + 0.5) : max;
+
+      // ---- C) 逐格著色（其餘互動/進階著色完全保留）----
       grid.eachLayer((layer: any) => {
         const f = layer.feature as GridFeature;
         const isSelected = !!(selectedIdRef.current && getFeatureId(f) === selectedIdRef.current);
 
-        // A) 原本 i.tsx 色塊（預設）
-        const temp = getMonthTemp(f, m);
-        const hasTemp = typeof temp === 'number';
-        const percent = hasTemp ? toPercent(temp as number, min, max) : undefined;
-        let fillColor = hasTemp ? colorByPercent(percent as number) : 'transparent';
-        let fillOpacity = hasTemp ? 0.6 : 0.1;
+        const v = getValueForFeature(f);
+        const hasVal = typeof v === 'number';
+        const percent = hasVal ? toPercent(v as number, safeMin, safeMax) : undefined;
 
-        // B) 進階著色（按下「著色功能」才啟用）
+        let fillColor = hasVal ? colorByPercent(percent as number) : 'transparent';
+        let fillOpacity = hasVal ? 0.6 : 0.1;
+
         if (enableAdvancedColor) {
           if (colorModeRef.current === 'type') {
             const t = getTypeForFeature(f);
-            if (t) {
-              fillColor = getColorForType(t);
-              fillOpacity = 0.65;
-            } else {
-              fillColor = 'transparent';
-              fillOpacity = 0.1;
-            }
+            if (t) { fillColor = getColorForType(t); fillOpacity = 0.65; }
+            else { fillColor = 'transparent'; fillOpacity = 0.1; }
           } else if (colorModeRef.current === 'temperature') {
-            if (hasTemp) {
-              fillColor = colorByPercent(percent as number);
-              fillOpacity = 0.6;
-            } else {
-              fillColor = 'transparent';
-              fillOpacity = 0.1;
-            }
+            if (hasVal) { fillColor = colorByPercent(percent as number); fillOpacity = 0.6; }
+            else { fillColor = 'transparent'; fillOpacity = 0.1; }
           }
         }
 
@@ -290,6 +359,56 @@ export default function MapSection() {
       });
     };
   }, [enableAdvancedColor]); // 只關心開關本身；其餘用 ref 取最新值
+  useEffect(() => {
+    // 只有「時間模式」才抓批次
+    if (mode !== 'time') {
+      timeGridRef.current = null;
+      applyLayerColorsRef.current();
+      return;
+    }
+
+    let aborted = false;
+    const y = activeSlider === 'past' ? pastYear : futureYear;
+    const which: 'history' | 'prediction' = activeSlider === 'past' ? 'history' : 'prediction';
+
+    (async () => {
+      try {
+        const map = await fetchTimeGridBatch(y, month, which);
+        if (aborted) return;
+        timeGridRef.current = map;          // 設定本月索引
+        applyLayerColorsRef.current();      // 拿到資料後重繪
+      } catch (e) {
+        if (aborted) return;
+        // 失敗時清空，走舊的 GeoJSON 欄位當後備
+        timeGridRef.current = null;
+        applyLayerColorsRef.current();
+      }
+    })();
+
+    return () => { aborted = true; };
+  }, [mode, activeSlider, pastYear, futureYear, month]);
+
+  useEffect(() => {
+    if (mode !== 'population') {
+      vegGridRef.current = null;            // 切離開植被模式就清空
+      return;
+    }
+    let aborted = false;
+    (async () => {
+      try {
+        const map = await fetchVegFormapBatch(month, veg); // veg 若本來是 0~1，請把第二參數改成 veg*100
+        if (aborted) return;
+        vegGridRef.current = map;
+        applyLayerColorsRef.current();      // 拿到資料後重畫一次
+      } catch (e) {
+        if (aborted) return;
+        vegGridRef.current = null;          // 失敗就回退舊邏輯
+        applyLayerColorsRef.current();
+      }
+    })();
+    return () => { aborted = true; };
+  }, [mode, month, veg]);
+
 
   /* --- 初始化地圖 --- */
   useEffect(() => {
@@ -411,6 +530,32 @@ export default function MapSection() {
     };
   }, []);
 
+
+  async function fetchTimeGridBatch(y: number, m: number, which: 'history' | 'prediction') {
+    const cacheKey = `${which}:${y}:${m}`;
+    const cached = timeGridCacheRef.current.get(cacheKey);
+    if (cached) return cached;
+
+    const base = getBases()[0];
+    const url = `${base}/formap/Temperature/${y}/${pad2(m)}`;
+    // 後端回傳格式：{ [column_id]: { [row_id]: value } }
+    const payload = await fetchJSON<Record<string, Record<string, number | null>>>(url);
+
+    const map = new Map<CellKey, number>();
+    for (const cStr in payload) {
+      const rows = payload[cStr] || {};
+      for (const rStr in rows) {
+        const v = rows[rStr];
+        const r = Number(rStr), c = Number(cStr);
+        if (Number.isFinite(r) && Number.isFinite(c) && typeof v === 'number') {
+          map.set(makeCellKey(r, c), v);
+        }
+      }
+    }
+    timeGridCacheRef.current.set(cacheKey, map);
+    return map;
+  }
+
   /* --- API URL 候選組合 --- */
   function buildApiCandidates(): string[] {
     if (rowId == null || colId == null) return [];
@@ -511,6 +656,38 @@ export default function MapSection() {
       className="relative overflow-hidden h-[200vh] bg-transparent"
       style={{ opacity: mounted ? 1 : 0 }}
     >
+      {/* 標題層 - 使用 index.tsx 格式 */}
+      <div className="sticky top-0 h-screen flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8, x: 0, y: 0 }}
+          style={{
+            opacity: mounted ? titleOpacity : 0,
+            scale: mounted ? titleScale : 0.8
+          }}
+          className="text-center px-4 w-full flex flex-col items-center justify-center"
+        >
+          <h2
+            className="font-display text-white tracking-wider text-center"
+            style={{
+              fontSize: 'clamp(1rem, 6vw, 4rem)',
+              lineHeight: '1.2'
+            }}
+          >
+            Heat Island Model
+          </h2>
+          <motion.p
+            className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4"
+            style={{
+              opacity: mounted ? descriptionOpacity : 0,
+              fontSize: 'clamp(0.7rem, 2vw, 1.8rem)',
+              lineHeight: '1.4'
+            }}
+          >
+            理解雙北十年的溫度脈動 ↔ 以植物為核心預測未來場景
+          </motion.p>
+        </motion.div>
+      </div>
+
       {/* 模式切換 + 著色功能 */}
       <div className="flex justify-center mb-8 gap-4 px-4 max-md:flex-col max-md:items-center max-md:gap-3">
         <button
@@ -673,7 +850,7 @@ export default function MapSection() {
         {/* 類型圖例 - 只有開啟進階著色且為類型模式時顯示 */}
         {enableAdvancedColor && colorMode === 'type' && (
           <div className="absolute top-4 right-4 z-30 bg-black/85 rounded-lg p-3 text-white border border-gray-700">
-            <div className="text-xs mb-2">圖例：類型</div>
+            <div className="text-xs mb-2">類型</div>
             <div className="flex gap-4 flex-wrap">
               {(['mountain', 'coast', 'city', 'suburb'] as const).map(key => (
                 <div key={key} className="flex items-center gap-2">
@@ -701,8 +878,6 @@ export default function MapSection() {
                 <div className="section">
                   <h4 className="section-title">📍 位置資訊</h4>
                   <div className="info-grid">
-                    <div>row_id: <strong>{rowId}</strong></div>
-                    <div>column_id: <strong>{colId}</strong></div>
                     <div>經緯度: {centerLL ? `${centerLL.lat.toFixed(4)}, ${centerLL.lng.toFixed(4)}` : '—'}</div>
                   </div>
                 </div>
@@ -732,7 +907,7 @@ export default function MapSection() {
                       {/* 顯示三個溫度值 */}
                       <div className="temp-grid">
                         <div className="temp-item">
-                          <span className="temp-label">🌡️ 當前溫度:</span>
+                          <span className="temp-label">🌡️ 平均溫度:</span>
                           <span className="temp-value">{typeof flaskTemps.current === 'number' ? `${flaskTemps.current.toFixed(1)} °C` : '—'}</span>
                         </div>
                         <div className="temp-item">

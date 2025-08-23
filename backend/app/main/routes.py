@@ -204,14 +204,14 @@ def get_yearly_temperature_data(year, colrow):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@bp.route('/formap/<string:type>/<int:year>/<int:month>', methods=['GET'])
-def get_temperature_map(type, year, month):
+@bp.route('/formap/NDVI/<string:type>/<path:veg>/<int:month>', methods=['GET'])
+def get_ndvi_temperature_map(type, veg, month):
     try:
         # 檢查溫度類型是否有效
         valid_types = [
-            "Temperature",
-            "Low_Temp",
-            "High_Temp",
+            "Temperature_Predicted",
+            "High_Temp_Predicted",
+            "Low_Temp_Predicted",
             "Apparent_Temperature",
             "Apparent_Temperature_High",
             "Apparent_Temperature_Low"
@@ -221,23 +221,52 @@ def get_temperature_map(type, year, month):
                 "error": f"Invalid temperature type. Must be one of: {', '.join(valid_types)}"
             }), 400
 
-        # 查詢指定年月的所有網格數據
-        records = HistoryData.query.filter_by(
-            Year=year,
-            Month=month
-        ).order_by(HistoryData.column_id, HistoryData.row_id).all()
+        # 檢查 vegetation_coverage 是否為有效的浮點數
+        try:
+            vegetation_coverage = float(veg)
+        except ValueError:
+            return jsonify({"error": "Invalid vegetation coverage value 植被覆蓋率格式無效"}), 400
 
-        if not records:
+        # 獲取該月份所有的網格位置
+        grid_positions = db.session.query(
+            NDVITemp.column_id, 
+            NDVITemp.row_id
+        ).filter_by(Month=month).distinct().all()
+
+        if not grid_positions:
             return jsonify({"error": "Data not found 查無資料"}), 404
 
         # 建立回應數據
         result = {}
-        for record in records:
-            col_key = str(record.column_id)
-            if col_key not in result:
-                result[col_key] = {}
-            # 使用動態的溫度類型
-            result[col_key][str(record.row_id)] = getattr(record, type)
+        
+        for column_id, row_id in grid_positions:
+            # 對每個網格點，先找完全匹配的資料
+            record = NDVITemp.query.filter_by(
+                Month=month,
+                column_id=column_id,
+                row_id=row_id,
+                Vegetation_Coverage=vegetation_coverage
+            ).first()
+            
+            if not record:
+                # 如果沒有完全匹配的，找最接近的植被覆蓋率
+                record = NDVITemp.query.filter_by(
+                    Month=month,
+                    column_id=column_id,
+                    row_id=row_id
+                ).order_by(
+                    func.abs(NDVITemp.Vegetation_Coverage - vegetation_coverage)
+                ).first()
+            
+            if record:
+                col_key = str(record.column_id)
+                if col_key not in result:
+                    result[col_key] = {}
+                # 使用動態的溫度類型
+                result[col_key][str(record.row_id)] = getattr(record, type)
+
+        if not result:
+            return jsonify({"error": "Data not found 查無資料"}), 404
 
         return jsonify(result)
 
