@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "start:backend": "cd Rag_Chatbot && .venv\\Scripts\\activate && python CHATBOT.py",
+    "start:backend": "cd frontend/Rag_Chatbot .venv\\Scripts\\activate && python CHATBOT.py",
     "start:flask": "python route.py",
     "init:db": "python init_database.py",
     "dev:full": "concurrently \"npm run start:backend\" \"npm run dev\"",

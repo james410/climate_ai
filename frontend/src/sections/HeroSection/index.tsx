@@ -79,17 +79,20 @@ const HeroSection = forwardRef<HTMLElement>((props, ref) => {
 
 
 
-      {/* 底部 12% 區域模糊遮罩 - 由下往上漸淡的黑色漸層 */}
+            {/* 底部區域模糊遮罩 - 更自然的漸變 */}
       <motion.div
-        className="absolute inset-x-0 top-[70%] bottom-0 z-20 pointer-events-none"
+        className="absolute inset-x-0 top-[60%] bottom-0 z-20 pointer-events-none"
         style={{
-          background: 'linear-gradient(to top, rgba(26, 29, 31, 1) 20%, rgba(0, 0, 0, 0) 100%)',
-          backdropFilter: maskBlurValue,
-          WebkitBackdropFilter: maskBlurValue,
+          background: `linear-gradient(to top, 
+            rgba(26, 29, 31, 1) 5%, 
+            rgba(29, 33, 36, 0.85) 20%, 
+            rgba(26, 29, 31, 0.45) 40%, 
+            rgba(26, 29, 31, 0.1) 70%, 
+            rgba(255, 0, 0, 0) 100%)`,
+          // backdropFilter: maskBlurValue,
+          // WebkitBackdropFilter: maskBlurValue,
         }}
       />
-
-
       {showTitle && (
         <motion.h1
           layoutId="verdisle-title"

@@ -88,7 +88,7 @@ def main():
         
         # 啟動後端
         print("🔧 正在啟動後端服務器...")
-        backend_dir = os.path.join(os.getcwd(), "Rag_Chatbot")
+        backend_dir = os.path.join(os.getcwd(), "frontend","Rag_Chatbot")
         
         # 檢查後端目錄和文件是否存在
         if not os.path.exists(backend_dir):
@@ -120,7 +120,7 @@ def main():
             # 嘗試連接後端 API 檢查是否啟動成功
             try:
                 import urllib.request
-                with urllib.request.urlopen('http://localhost:5000') as response:
+                with urllib.request.urlopen('http://localhost:5001') as response:
                     if response.status == 200:
                         backend_ready = True
                         print("✅ 後端服務器啟動成功")
@@ -141,9 +141,10 @@ def main():
         print("🌐 正在啟動前端服務器...")
         
         # 使用 shell=True 來確保命令能正確執行
+        frontend_dir = os.path.join(os.getcwd(), "frontend")
         frontend_process = subprocess.Popen([
             npm_path, "run", "dev"
-        ], shell=True)
+        ],cwd=frontend_dir, shell=True)
         pm.add_process(frontend_process)
         
         print("\n✅ 所有服務已啟動！")
