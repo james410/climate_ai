@@ -49,6 +49,7 @@ function CustomGradient() {
 const HeroSection = forwardRef<HTMLElement>((props, ref) => {
   const { scrollYProgress } = useScroll();
   const [showTitle, setShowTitle] = useState(true);
+  
 
   useEffect(() => {
     const unsub = scrollYProgress.on('change', p => setShowTitle(p < 0.09));
@@ -76,14 +77,18 @@ const HeroSection = forwardRef<HTMLElement>((props, ref) => {
     <section ref={ref} className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
       <CustomGradient />
 
-      {/* 底部 12% 區域模糊遮罩 */}
+
+
+      {/* 底部 12% 區域模糊遮罩 - 由下往上漸淡的黑色漸層 */}
       <motion.div
-        className="absolute inset-x-0 top-[88%] bottom-0 bg-surface z-20 pointer-events-none"
+        className="absolute inset-x-0 top-[70%] bottom-0 z-20 pointer-events-none"
         style={{
+          background: 'linear-gradient(to top, rgba(26, 29, 31, 1) 20%, rgba(0, 0, 0, 0) 100%)',
           backdropFilter: maskBlurValue,
           WebkitBackdropFilter: maskBlurValue,
         }}
       />
+
 
       {showTitle && (
         <motion.h1

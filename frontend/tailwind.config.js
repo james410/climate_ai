@@ -23,7 +23,7 @@ module.exports = {
         secondary: '#668da7',
         accent: '#5eb3b4',
         // 表面色彩
-        surface: '#1a1d1f',
+        surface: '#1293eaff',
         surface2: '#edfffd',
         // 文字色彩
         text: {
