@@ -137,10 +137,10 @@ function toPercent(v: number, min: number, max: number) {
 }
 
 function colorByPercent(p: number) {
-  if (p < 25) return '#EAB090';
-  if (p < 50) return '#E27777';
-  if (p < 75) return '#AE567D';
-  return '#724B80';
+  if (p < 25) return '#ddab17';
+  if (p < 50) return '#eb7846';
+  if (p < 75) return '#cd3e5d';
+  return '#9f2f7c';
 }
 
 // 後端回傳
@@ -653,39 +653,17 @@ export default function MapSection() {
     <section
       id="map-section"
       ref={sectionRef}
-      className="relative overflow-hidden h-[200vh] bg-transparent"
+      className="relative overflow-hidden h-[100vh] bg-transparent"
       style={{ opacity: mounted ? 1 : 0 }}
     >
       {/* 標題層 - 使用 index.tsx 格式 */}
-      <div className="sticky top-0 h-screen flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, x: 0, y: 0 }}
-          style={{
-            opacity: mounted ? titleOpacity : 0,
-            scale: mounted ? titleScale : 0.8
-          }}
-          className="text-center px-4 w-full flex flex-col items-center justify-center"
-        >
+      <div className="sticky top-0 m-screen flex items-center justify-center ">
+        
           <h2
-            className="font-display text-white tracking-wider text-center"
-            style={{
-              fontSize: 'clamp(1rem, 6vw, 4rem)',
-              lineHeight: '1.2'
-            }}
+            className="font-chinese text-text-primary tracking-wider text-center text-title01 leading-loose"
           >
             Heat Island Model
           </h2>
-          <motion.p
-            className="font-sans text-gray-100 font-regular tracking-wide text-center max-w-2xl mx-auto mt-4"
-            style={{
-              opacity: mounted ? descriptionOpacity : 0,
-              fontSize: 'clamp(0.7rem, 2vw, 1.8rem)',
-              lineHeight: '1.4'
-            }}
-          >
-            理解雙北十年的溫度脈動 ↔ 以植物為核心預測未來場景
-          </motion.p>
-        </motion.div>
       </div>
 
       {/* 模式切換 + 著色功能 */}
@@ -693,20 +671,20 @@ export default function MapSection() {
         <button
           onClick={() => setMode('time')}
           className={`px-6 py-3 rounded-lg font-semibold transition-all max-md:w-full max-md:max-w-sm ${mode === 'time'
-            ? 'bg-green-500 text-black'
+            ? 'bg-surface text-black'
             : 'text-gray-400 border border-gray-700 hover:text-white'
             }`}
         >
-          理解雙北十年的溫度脈動
+          歷史與預測溫度模型
         </button>
         <button
           onClick={() => setMode('population')}
           className={`px-6 py-3 rounded-lg font-semibold transition-all max-md:w-full max-md:max-w-sm ${mode === 'population'
-            ? 'bg-green-500 text-black'
+            ? 'bg-surface text-black'
             : 'text-gray-400 border border-gray-700 hover:text-white'
             }`}
         >
-          以植物為核心預測未來場景
+          植被覆蓋率推導模型
         </button>
 
         {/* 新增：著色功能開關（預設關閉） */}
@@ -726,7 +704,7 @@ export default function MapSection() {
           className={`px-4 py-2 rounded-lg font-semibold transition-all max-md:w-full max-md:max-w-sm ${enableAdvancedColor ? 'bg-cyan-500 text-black' : 'text-gray-300 border border-gray-700 hover:text-white'}`}
           title="按一下切換到 index.tsx 的著色功能；再按回到原本色塊"
         >
-          代表性分區
+          代表性分區重點展示
         </button>
 
       </div>
@@ -827,19 +805,19 @@ export default function MapSection() {
               <span className="font-bold text-xs">溫度圖例 ({month}月)</span>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded" style={{ backgroundColor: '#EAB090' }}></div>
+                  <div className="w-2 h-2 rounded bg-temp-low"></div>
                   <span className="text-xs">低溫</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded" style={{ backgroundColor: '#E27777' }}></div>
+                  <div className="w-2 h-2 rounded bg-temp-medium"></div>
                   <span className="text-xs">中低溫</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded" style={{ backgroundColor: '#AE567D' }}></div>
+                  <div className="w-2 h-2 rounded bg-temp-high"></div>
                   <span className="text-xs">中高溫</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded" style={{ backgroundColor: '#724B80' }}></div>
+                  <div className="w-2 h-2 rounded bg-temp-extreme"></div>
                   <span className="text-xs">高溫</span>
                 </div>
               </div>
@@ -962,7 +940,7 @@ export default function MapSection() {
           transition: transform 0.3s ease;
           z-index: 1000;
           box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-          font-family: 'Courier New', monospace;
+          font-family: var(--font-mono);
           backdrop-filter: blur(10px);
           overflow: hidden;
         }

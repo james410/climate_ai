@@ -71,7 +71,7 @@ const HeroSection = forwardRef<HTMLElement>((props, ref) => {
   const maskBlur = useTransform(scrollYProgress, [0.88, 1], [10, 0]);
   const maskBlurValue = useMotionTemplate`blur(${maskBlur}px)`;
 
-  const scrollToMap = () => document.getElementById('map-section')?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToIntro = () => document.getElementById('IntroSection')?.scrollIntoView({ behavior: 'smooth' });
 
   return (
     <section ref={ref} className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
@@ -109,7 +109,7 @@ const HeroSection = forwardRef<HTMLElement>((props, ref) => {
         Islands of Heat, Cities of Change
       </motion.p>
       <motion.div
-        onClick={scrollToMap}
+        onClick={scrollToIntro}
         className="relative z-10"
         animate={{ y: [0, 6, 0] }}
         transition={{ duration: 2, repeat: Infinity }}

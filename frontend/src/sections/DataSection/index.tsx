@@ -16,7 +16,7 @@ export default function DataSection() {
   return (
     <section
       ref={sectionRef}
-      className="py-20 bg-transparent flex flex-col items-center"
+      className="py-10 bg-transparent flex flex-col items-center"
     >
       {/* 標題區域 */}
       <motion.div
@@ -48,7 +48,7 @@ export default function DataSection() {
           
           {/* 核心發現 */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 50  }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
             viewport={{ once: true }}
