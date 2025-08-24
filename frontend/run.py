@@ -88,7 +88,7 @@ def main():
         
         # 啟動後端
         print("🔧 正在啟動後端服務器...")
-        backend_dir = os.path.join(os.getcwd(), "frontend","Rag_Chatbot")
+        backend_dir = os.path.join(os.getcwd(),"Rag_Chatbot")
         
         # 檢查後端目錄和文件是否存在
         if not os.path.exists(backend_dir):
@@ -141,7 +141,7 @@ def main():
         print("🌐 正在啟動前端服務器...")
         
         # 使用 shell=True 來確保命令能正確執行
-        frontend_dir = os.path.join(os.getcwd(), "frontend")
+        frontend_dir = os.path.join(os.getcwd())
         frontend_process = subprocess.Popen([
             npm_path, "run", "dev"
         ],cwd=frontend_dir, shell=True)

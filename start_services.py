@@ -13,11 +13,11 @@ def run_backend():
 def run_frontend():
     print("啟動前端服務...")
     frontend_process = subprocess.Popen(
-        ["python", "frontend/run.py"],
+        ["python", "run.py"],
+        cwd="frontend",  # 指定工作目錄
         shell=True
     )
     return frontend_process
-
 if __name__ == "__main__":
     backend = run_backend()
     run_frontend()

@@ -55,7 +55,7 @@ export default function EducationSection() {
   // 檢查系統狀態
   const checkSystemStatus = async () => {
     try {
-      const response = await fetch('http://localhost:5000/status');
+      const response = await fetch('http://localhost:5001/status');
       const data = await response.json();
       if (data.ready) {
         setSystemStatus({
@@ -143,7 +143,7 @@ export default function EducationSection() {
     const loadingMsgId = addMessage('正在思考中...', 'loading');
 
     try {
-      const response = await fetch('http://localhost:5000/chat', {
+      const response = await fetch('http://localhost:5001/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ export default function EducationSection() {
 
     if (window.confirm('確定要清除所有對話記錄嗎？')) {
       try {
-        await fetch('http://localhost:5000/clear', {
+        await fetch('http://localhost:5001/clear', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -224,7 +224,7 @@ export default function EducationSection() {
   // 檢查狀態
   const checkStatus = async () => {
     try {
-      const response = await fetch('http://localhost:5000/status');
+      const response = await fetch('http://localhost:5001/status');
       const data = await response.json();
       
       let statusInfo = '系統狀態:\n';
