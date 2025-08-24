@@ -708,117 +708,43 @@ export default function MapSection() {
         </button>
 
       </div>
-
-      {/* 地圖容器卡片 */}
-      <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden" style={{ marginTop: '2rem' }}>
-        {/* 當前年月顯示 */}
-        <div className="absolute top-4 left-4 z-20 bg-black/90 rounded-lg p-4 text-white border border-gray-700">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">當前時間</span>
-              <div className="text-lg font-bold">
-                {mode === 'time' ? (activeSlider === 'past' ? `${pastYear}` : `${futureYear}`) : '2022'} 年 {month} 月
-              </div>
-            </div>
-            <div className="border-l border-gray-600 pl-4">
-              <span className="text-xs text-gray-400">
-                {mode === 'time' ? (activeSlider === 'past' ? '📊 歷史資料' : '🔮 未來預測') : '🌱 植被分析'}
-              </span>
+      {/* 當前年月顯示（移到黑色容器上方） */}
+      <div className="absolute top-32 right-4 z-10  rounded-lg p-4 text-white border border-gray-700" >
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400">當前時間</span>
+            <div className="text-lg font-bold">
+              {mode === 'time' ? (activeSlider === 'past' ? `${pastYear}` : `${futureYear}`) : '2022'} 年 {month} 月
             </div>
           </div>
+          <div className="border-l border-gray-600 pl-4">
+            <span className="text-xs text-gray-400">
+              {mode === 'time' ? (activeSlider === 'past' ? '📊 歷史資料' : '🔮 未來預測') : '🌱 植被分析'}
+            </span>
+          </div>
         </div>
-
-        {/* 中間控制拉桿區域（原樣） */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-black/90 rounded-lg p-4 text-white border border-gray-700 max-md:relative max-md:left-auto max-md:transform-none max-md:mt-4 max-md:mx-4">
-          {mode === 'population' ? (
-            <div className="flex items-center gap-6 max-md:flex-col max-md:gap-3">
-              <div className="flex items-center gap-4 max-md:w-full max-md:flex-col max-md:gap-2">
-                <span className="text-xs text-gray-400 whitespace-nowrap">🌱 植被覆蓋率</span>
-                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-                  <input type="range" min={0} max={100} step={10} value={veg}
-                    onChange={(e) => setVeg(Number(e.target.value))}
-                    className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
-                    style={{ background: `linear-gradient(to right, #22c55e 0%, #22c55e ${veg}%, #374151 ${veg}%, #374151 100%)` }} />
-                  <span className="text-sm font-bold text-green-400 min-w-[3rem]">{veg}%</span>
-                </div>
-              </div>
-              <div className="h-6 w-px bg-gray-600/70 max-md:h-px max-md:w-6" />
-              <div className="flex items-center gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
-                <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
-                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-                  <input type="range" min={1} max={12} step={1} value={month}
-                    onChange={(e) => setMonth(Number(e.target.value))}
-                    className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
-                    style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
-                  <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-6 max-md:flex-col max-md:gap-3">
-              <div className="flex items-center gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
-                <div className="flex gap-2">
-                  <button onClick={() => setActiveSlider('past')}
-                    className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'past' ? 'bg-blue-500 text-white' : 'text-gray-400 border border-gray-600 hover:text-white'}`}>📊 歷史</button>
-                  <button onClick={() => setActiveSlider('future')}
-                    className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'future' ? 'bg-purple-500 text-white' : 'text-gray-400 border border-gray-600 hover:text-white'}`}>🔮 未來</button>
-                </div>
-                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-                  <input type="range" min={activeSlider === 'past' ? 2013 : 2025} max={activeSlider === 'past' ? 2023 : 2035} step={1}
-                    value={activeSlider === 'past' ? pastYear : futureYear}
-                    onChange={(e) => { const v = Number(e.target.value); activeSlider === 'past' ? setPastYear(v) : setFutureYear(v); }}
-                    className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
-                    style={{
-                      background: activeSlider === 'past'
-                        ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((pastYear - 2013) / 10) * 100}%, #374151 ${((pastYear - 2013) / 10) * 100}%, #374151 100%)`
-                        : `linear-gradient(to right, #a855f7 0%, #a855f7 ${((futureYear - 2025) / 10) * 100}%, #374151 ${((futureYear - 2025) / 10) * 100}%, #374151 100%)`
-                    }} />
-                  <span className={`text-sm font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-purple-400'}`}>{activeSlider === 'past' ? pastYear : futureYear}年</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
-                <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
-                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-                  <input type="range" min={1} max={12} step={1} value={month}
-                    onChange={(e) => setMonth(Number(e.target.value))}
-                    className="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
-                    style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
-                  <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 地圖容器 */}
-        <div
-          id="leaflet-map"
-          ref={mapRef}
-          className="w-full mt-[80px] rounded-2xl overflow-hidden border border-gray-800 max-md:mt-4"
-          style={{ height: 'clamp(400px, 60vh, 600px)' }}
-        />
-
-        {/* 溫度圖例 - 常駐顯示，只有類型模式時才被類型圖例取代 */}
+      </div>
+     {/* 溫度圖例 - 常駐顯示，只有類型模式時才被類型圖例取代 */}
         {!enableAdvancedColor || colorMode === 'temperature' ? (
-          <div className="absolute top-4 right-4 z-30 bg-black/85 rounded-lg px-2 py-2 text-white border border-gray-700">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-xs">溫度圖例 ({month}月)</span>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded bg-temp-low"></div>
-                  <span className="text-xs">低溫</span>
+          <div className="absolute top-1 left-4 z-[10]  rounded-lg px-3 py-3 text-white border border-gray-700">
+            <div className="flex flex-col gap-3">
+              <span className="font-bold text-l">溫度圖例 ({month}月)</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-temp-low"></div>
+                  <span className="text-">低溫</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded bg-temp-medium"></div>
-                  <span className="text-xs">中低溫</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-temp-medium"></div>
+                  <span className="text-m">中低溫</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded bg-temp-high"></div>
-                  <span className="text-xs">中高溫</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-temp-high"></div>
+                  <span className="text-m">中高溫</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded bg-temp-extreme"></div>
-                  <span className="text-xs">高溫</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-temp-extreme"></div>
+                  <span className="text-m">高溫</span>
                 </div>
               </div>
             </div>
@@ -827,7 +753,7 @@ export default function MapSection() {
 
         {/* 類型圖例 - 只有開啟進階著色且為類型模式時顯示 */}
         {enableAdvancedColor && colorMode === 'type' && (
-          <div className="absolute top-4 right-4 z-30 bg-black/85 rounded-lg p-3 text-white border border-gray-700">
+          <div className="absolute top-4 right-4 z-[15] bg-black/85 rounded-lg p-3 text-white border border-gray-700">
             <div className="text-xs mb-2">類型</div>
             <div className="flex gap-4 flex-wrap">
               {(['mountain', 'coast', 'city', 'suburb'] as const).map(key => (
@@ -839,6 +765,87 @@ export default function MapSection() {
             </div>
           </div>
         )}
+      {/* 地圖容器卡片 */}
+      <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden" style={{ marginTop: '2rem' }}>
+
+{/* 中間控制拉桿區域（修改後的佈局） */}
+<div className="absolute top-4 right-4 z-10 bg-black/90 rounded-lg p-4 text-white border border-gray-700 max-md:relative max-md:right-auto max-md:mt-4 max-md:mx-4" style={{ width: '360px', minWidth: '360px' }}>
+  {mode === 'population' ? (
+    <div className="flex flex-col items-start gap-6 max-md:gap-3">
+      <div className="flex-col gap-4 max-md:w-full max-md:flex-col max-md:gap-2">
+        <span className="text-xs text-gray-400 whitespace-nowrap">🌱 植被覆蓋率</span>
+        <div className="flex-col gap-3 max-md:w-full max-md:justify-between">
+          <input type="range" min={0} max={100} step={10} value={veg}
+            onChange={(e) => setVeg(Number(e.target.value))}
+            className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+            style={{ background: `linear-gradient(to right, #22c55e 0%, #22c55e ${veg}%, #374151 ${veg}%, #374151 100%)` }} />
+          <span className="text-sm font-bold text-green-400 min-w-[3rem]">{veg}%</span>
+        </div>
+      </div>
+      <div className="h-6 w-px bg-gray-600/70 max-md:h-px max-md:w-6" />
+      <div className="flex-col gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
+        <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
+        <div className="flex-col gap-3 max-md:w-full max-md:justify-between">
+          <input type="range" min={1} max={12} step={1} value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+            style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
+          <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
+        </div>
+      </div>
+    </div>
+  ) : (
+    /* 修改後的時間模式佈局 - 將月份移到歷史/未來按鈕下方 */
+    <div className="flex flex-col items-start gap-4 max-md:gap-3">
+      {/* 歷史/未來按鈕組 */}
+      <div className="flex flex-col gap-3 max-md:w-full">
+        <div className="flex gap-2">
+          <button onClick={() => setActiveSlider('past')}
+            className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'past' ? 'bg-blue-500 text-white' : 'text-gray-400 border border-gray-600 hover:text-white'}`}>📊 歷史</button>
+          <button onClick={() => setActiveSlider('future')}
+            className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'future' ? 'bg-purple-500 text-white' : 'text-gray-400 border border-gray-600 hover:text-white'}`}>🔮 未來</button>
+        </div>
+        
+        {/* 年份控制 */}
+        <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+          <input type="range" min={activeSlider === 'past' ? 2013 : 2025} max={activeSlider === 'past' ? 2023 : 2035} step={1}
+            value={activeSlider === 'past' ? pastYear : futureYear}
+            onChange={(e) => { const v = Number(e.target.value); activeSlider === 'past' ? setPastYear(v) : setFutureYear(v); }}
+            className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+            style={{
+              background: activeSlider === 'past'
+                ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((pastYear - 2013) / 10) * 100}%, #374151 ${((pastYear - 2013) / 10) * 100}%, #374151 100%)`
+                : `linear-gradient(to right, #a855f7 0%, #a855f7 ${((futureYear - 2025) / 10) * 100}%, #374151 ${((futureYear - 2025) / 10) * 100}%, #374151 100%)`
+            }} />
+          <span className={`text-sm font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-purple-400'}`}>{activeSlider === 'past' ? pastYear : futureYear}年</span>
+        </div>
+      </div>
+
+      {/* 分隔線 */}
+      <div className="h-px w-full bg-gray-600/70" />
+
+      {/* 月份控制 - 移到這裡 */}
+      <div className="flex flex-col gap-3 max-md:w-full">
+        <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
+        <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+          <input type="range" min={1} max={12} step={1} value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+            style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
+          <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+
+                {/* 方案 1: 減少上邊距，確保完整顯示 */}
+        <div
+          id="leaflet-map"
+          ref={mapRef}
+          className="w-3/4 mt-1 rounded-2xl overflow-hidden border border-gray-800 max-md:mt-2 mx-auto ml-4"
+          style={{ height: 'clamp(400px, 60vh, 600px)' }}
+        />
 
         {/* 側邊資訊面板（fixed） */}
         <div className={`info-sidebar ${mode === 'population' ? 'mode-population' : 'mode-time'} ${sidebarOpen ? 'open' : ''}`}>
