@@ -1,186 +1,183 @@
-'use client';
-
 import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, easeInOut } from 'framer-motion';
+import Image from 'next/image';
 
-export default function DataSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-
+export default function HeatIslandReportLayout() {
+  const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
-    target: sectionRef,
+    target: containerRef,
     offset: ['start end', 'end start'],
   });
-  const revealOpacity = useTransform(scrollYProgress, [0, 0.2, 0.4], [0, 1, 1]);
-  const revealScale = useTransform(scrollYProgress, [0, 0.2, 0.4], [0.9, 1, 1]);
+
+  const fadeIn = {
+    hidden: { opacity: 0, y: 40 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: easeInOut } },
+  };
+
+  const slideIn = {
+    hidden: { opacity: 0, x: 40 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.8, ease: easeInOut } },
+  };
+
+  const floatingAnimation = {
+    y: [-10, 10, -10],
+    transition: {
+      duration: 4,
+      ease: easeInOut,
+      repeat: Infinity,
+    }
+  };
 
   return (
-    <section
-      ref={sectionRef}
-      className="py-10 bg-transparent flex flex-col items-center"
-    >
-      {/* 標題區域 */}
-      <motion.div
-        style={{ opacity: revealOpacity, scale: revealScale }}
-        className="max-w-4xl text-center mb-16 px-8"
-      >
-        <h2 className="text-4xl text-white font-vintage tracking-[0.15em] leading-[1.2] mb-8">
-          🌡️ 台北都市熱島實測揭露
-        </h2>
-        <p className="text-2xl text-white font-vintage tracking-[0.1em] leading-[1.2]">
-          <span
-            style={{
-              background: 'linear-gradient(transparent 60%, #a7d7d9 60%)',
-              fontWeight: 'bold',
-              paddingBottom: '2px',
-            }}
-          >
-            植被調控溫度的驚人能力
-          </span>
-        </p>
-      </motion.div>
+    <div ref={containerRef} className="min-h-screen bg-[#1a1d1f] text-text-secondary font-chinese">
+      
+      {/* 增加與上個Section的空白 */}
+      <div className="h-[20vh]"></div>
 
-      {/* 主要內容區域 */}
-      <motion.div
-        style={{ opacity: revealOpacity, scale: revealScale }}
-        className="max-w-6xl w-full px-12"
-      >
-        <div className="bg-white/8 backdrop-blur-sm rounded-3xl p-16 border border-gray-400/20 shadow-xl">
-          
-          {/* 核心發現 */}
+      {/* 第一區塊：圖片左側，文字疊在圖片右下角 */}
+      <section className="relative px-6 py-16 max-w-7xl mx-auto">
+        {/* 圖片 - 左側20%-50% */}
+        <motion.div
+          className="absolute left-[15%] w-[35%] aspect-[4/3]"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={slideIn}
+          animate={floatingAnimation}
+        >
+          <div className="w-full h-full rounded-lg overflow-hidden opacity-80 shadow-2xl">
+            <Image
+              src="/images/img01.jpg"
+              alt="城市熱島效應圖片"
+              width={800}
+              height={600}
+              className="w-full h-full object-cover"
+              priority
+            />
+          </div>
+        </motion.div>
+
+        {/* 文字 - 疊在圖片右下角 */}
+        <motion.div
+          className="relative ml-[42%] mt-[12%] max-w-lg space-y-6 z-10 bg-[#1a1d1f]/65 backdrop-blur-sm p-8 rounded-lg"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={fadeIn}
+          transition={{ delay: 0.3 }}
+        >
+          <h2 className="text-xl font-medium text-accent mb-4">一年比一年更熱的現實</h2>
+          <p className="text-base leading-relaxed">
+            近十年來，台北與新北地區的平均氣溫穩步上升，每十年約增加<strong className="text-accent">0.9°C</strong>；當我們回顧過去的五年與展望未來的五年，溫度差距更接近<strong className="text-accent">0.8°C</strong>。
+          </p>
+          <p className="text-base leading-relaxed opacity-90">
+            這樣的增幅，猶如初夏午後的緩緩升溫，卻無形中堆積在每一個日常片刻中。站在夜色之下，空氣不再如從前般涼爽，那逐漸消逝的涼意，正悄然影響每一個城市的日常與夜晚。
+          </p>
+        </motion.div>
+      </section>
+
+      {/* 第二區塊：左側兩段文字，右側一張圖，文字右側略微覆蓋圖片 */}
+      <section className="relative px-6 py-24 max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+        {/* 左側文字區域 */}
+        <div className="space-y-12 relative z-10">
+          {/* 第一段文字 */}
           <motion.div
-            initial={{ opacity: 0, y: 50  }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            viewport={{ once: true }}
-            className="text-center mb-20"
+            className="relative ml-[45%] w-[70%] max-w-[120%] space-y-6 z-10 bg-[#1a1d1f]/65 backdrop-blur-sm p-8 rounded-lg"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={slideIn}
+            transition={{ delay: 0.3 }}
           >
-            <p className="text-2xl text-white font-vintage font-light leading-[1.6] mb-8">
-              🌳 
-              <span
-                style={{
-                  background: 'linear-gradient(transparent 65%, #a7d7d9 65%)',
-                  fontWeight: '600',
-                  paddingBottom: '3px',
-                  marginLeft: '0.5rem'
-                }}
-              >
-                大安森林公園 34.9°C 的冷島奇蹟
-              </span>
-              <br />
-              源自蒸發散效應、物理遮蔭與空氣對流三重降溫機制
+            <h2 className="text-xl font-medium text-accent mb-4">日夜溫差的悄然收斂</h2>
+            <p className="text-base leading-relaxed">
+              數據顯示，日夜溫差每十年縮小約<strong className="text-accent">0.7°C</strong>，平均月低溫上升<strong className="text-accent">1.23°C</strong> 。當夜間溫度上升，涼意轉被悶熱取代。未來的城市輪廓將在燈火中繼續延展，而黑夜則難以消去累積的餘溫。
             </p>
           </motion.div>
 
-          {/* 溫差數據 */}
+          {/* 第二段文字 */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-            className="text-center mb-20"
+            className="space-y-4 ml-[12%] max-w-[50%]"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={fadeIn}
+            transition={{ delay: 0.5 }}
           >
-            <p className="text-2xl text-white font-vintage font-light leading-[1.6]">
-              📏 相較於士林區開發區，溫差高達
-              <span
-                style={{
-                  background: 'linear-gradient(transparent 65%, #a7d7d9 65%)',
-                  fontWeight: '600',
-                  paddingBottom: '3px',
-                  marginLeft: '0.5rem',
-                  marginRight: '0.5rem'
-                }}
-              >
-                2.4–3.6°C
-              </span>
-              <br />
-              相當於南移 300–500 公里的氣候差異，幾乎是台北到嘉義的距離
+            <h3 className="text-xl font-medium text-accent">綠覆與海風：微妙的降溫之道</h3>
+            <p className="text-base leading-relaxed">
+              研究指出，沿海地區綠覆每提升10%，平均氣溫可下降約<strong className="text-accent">0.02°C</strong>，夜間更可降約<strong className="text-accent">0.03°C</strong>。相對市區同增量綠覆，夜間僅微降<strong className="text-accent">0.01°C</strong>，白天降溫效果有限。當我們在海邊種下綠植，細微的變化正逐漸累積，為城市帶來一絲涼意。
             </p>
           </motion.div>
-
-          {/* 熱島強度 */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            viewport={{ once: true }}
-            className="text-center mb-20"
-          >
-            <p className="text-2xl text-white font-vintage font-light leading-[1.6]">
-              🔥 
-              <span
-                style={{
-                  background: 'linear-gradient(transparent 65%, #a7d7d9 65%)',
-                  fontWeight: '600',
-                  paddingBottom: '3px',
-                  marginLeft: '0.5rem'
-                }}
-              >
-                士林區 37.3–38.5°C 的極端高溫
-              </span>
-              <br />
-              混凝土熱陷阱與多重反射效應，熱島強度達 10–15%
-            </p>
-          </motion.div>
-
-          {/* 聚集效應 */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <p className="text-2xl text-white font-vintage font-light leading-[1.6]">
-              ⚡ 
-              <span
-                style={{
-                  background: 'linear-gradient(transparent 65%, #a7d7d9 65%)',
-                  fontWeight: '600',
-                  paddingBottom: '3px',
-                  marginLeft: '0.5rem'
-                }}
-              >
-                綠地聚集效應非線性增強
-              </span>
-              <br />
-              大型集中綠地降溫效能達分散小綠地的 1.5–2 倍
-            </p>
-          </motion.div>
-
-          {/* 分隔線 */}
-          <div className="w-32 h-px bg-white/30 mx-auto my-16"></div>
-
-          {/* 總結 */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <p className="text-3xl text-white font-vintage font-light leading-[1.6]">
-              植被系統具備
-              <span
-                style={{
-                  background: 'linear-gradient(transparent 60%, #a7d7d9 60%)',
-                  fontWeight: '700',
-                  paddingBottom: '4px',
-                  fontSize: '1.2em',
-                  marginLeft: '0.5rem',
-                  marginRight: '0.5rem'
-                }}
-              >
-                10–15% 溫度調節能力
-              </span>
-              <br />
-              <span className="text-xl text-white/80 mt-6 block font-light">
-                決定極端高溫頻率・熱舒適度・能源消耗的關鍵因子
-              </span>
-            </p>
-          </motion.div>
-
         </div>
-      </motion.div>
-    </section>
+
+        {/* 右側圖片 - 保留浮動效果 */}
+        <motion.div
+          className="absolute left-[49%] w-[35%] -translate-y-1/2 w-[35%] aspect-[4/3] z-0"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={slideIn}
+          animate={floatingAnimation}
+          transition={{ delay: 0.7 }}
+        >
+          <div className="aspect-[4/3] w-full rounded-lg overflow-hidden shadow-2xl">
+            <Image
+              src="/images/img02.jpg"
+              alt="溫度變化趨勢圖"
+              width={800}
+              height={600}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </motion.div>
+      </section>
+
+
+      {/* 第三區塊：背景圖片加遮罩，文字分行排列 */}
+      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+        {/* 背景圖片 */}
+        <div className="absolute inset-0">
+          <Image
+            src="/images/img03.jpg"
+            alt="城市景觀背景"
+            fill
+            className="object-cover"
+            sizes="100vw"
+          />
+        </div>
+
+        {/* 底部區域模糊遮罩 */}
+        <motion.div
+          className="absolute inset-x-0 top-[40%] bottom-0 z-20 pointer-events-none"
+          style={{
+            background: `linear-gradient(to top, 
+              rgba(26, 29, 31, 1) 5%, 
+              rgba(29, 33, 36, 0.85) 20%, 
+              rgba(26, 29, 31, 0.45) 40%, 
+              rgba(26, 29, 31, 0.1) 70%, 
+              rgba(255, 0, 0, 0) 100%)`,
+          }}
+        />
+
+        {/* 文字內容 */}
+        <motion.div
+          className="relative z-30 max-w-3xl mx-auto px-6 space-y-8 text-center"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={fadeIn}
+        >
+          <div className="space-y-4 mt-12">
+            <p className="text-lg leading-relaxed text-text-primary">
+              城市的熱島效應，是時間和空間交織而成的長篇敘事。<br />
+              每一次溫度的改變，都是自然與人為力量的共鳴。<br />
+              唯有在細微之處注入智慧，才能讓城市在未來的日子裡，<br />
+              既保有繁華的脈動，也能在夜色中酣然入眠。
+            </p>
+          </div>
+        </motion.div>
+      </section>
+    </div>
   );
 }

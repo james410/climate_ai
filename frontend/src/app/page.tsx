@@ -6,6 +6,7 @@ import { useRef } from 'react';
 
 const HeroSection = dynamic(() => import('@/sections/HeroSection'));
 const IntroSection = dynamic(() => import('@/sections/IntroSection'));
+// 修正這行 - 因為您的組件是 export default，所以直接導入即可
 const DataSection = dynamic(() => import('@/sections/DataSection'));
 const EducationSection = dynamic(() => import('@/sections/EducationSection'));
 const Footer = dynamic(() => import('@/layout/Footer'));
