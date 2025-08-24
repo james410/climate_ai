@@ -709,7 +709,7 @@ export default function MapSection() {
 
       </div>
       {/* 當前年月顯示（移到黑色容器上方） */}
-      <div className="absolute top-32 right-4 z-10  rounded-lg p-4 text-white border border-gray-700" >
+      <div className="absolute top-32 right-16 z-10  rounded-lg p-4 text-white border border-gray-700" >
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400">當前時間</span>
@@ -719,7 +719,7 @@ export default function MapSection() {
           </div>
           <div className="border-l border-gray-600 pl-4">
             <span className="text-xs text-gray-400">
-              {mode === 'time' ? (activeSlider === 'past' ? '📊 歷史資料' : '🔮 未來預測') : '🌱 植被分析'}
+              {mode === 'time' ? (activeSlider === 'past' ? '歷史資料' : '未來預測') : ' 植被分析'}
             </span>
           </div>
         </div>
@@ -766,26 +766,26 @@ export default function MapSection() {
           </div>
         )}
       {/* 地圖容器卡片 */}
-      <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden" style={{ marginTop: '2rem' }}>
+  <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden bg-image-custom" style={{ marginTop: '2rem' }}>
 
 {/* 中間控制拉桿區域（修改後的佈局） */}
-<div className="absolute top-4 right-4 z-10 bg-black/90 rounded-lg p-4 text-white border border-gray-700 max-md:relative max-md:right-auto max-md:mt-4 max-md:mx-4" style={{ width: '360px', minWidth: '360px' }}>
+<div className="absolute top-4 right-16 z-10 bg-blue-100/30 rounded-lg p-4 text-white-100  border-blue-300 max-md:relative max-md:right-auto max-md:mt-4 max-md:mx-4" style={{ width: '360px', minWidth: '360px' ,}}>
   {mode === 'population' ? (
     <div className="flex flex-col items-start gap-6 max-md:gap-3">
       <div className="flex-col gap-4 max-md:w-full max-md:flex-col max-md:gap-2">
-        <span className="text-xs text-gray-400 whitespace-nowrap">🌱 植被覆蓋率</span>
+        <span className="text-m text-gray-100 whitespace-nowrap">植被覆蓋率</span>
         <div className="flex-col gap-3 max-md:w-full max-md:justify-between">
           <input type="range" min={0} max={100} step={10} value={veg}
             onChange={(e) => setVeg(Number(e.target.value))}
-            className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+            className="w-56 h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer max-md:flex-1"
             style={{ background: `linear-gradient(to right, #22c55e 0%, #22c55e ${veg}%, #374151 ${veg}%, #374151 100%)` }} />
           <span className="text-sm font-bold text-green-400 min-w-[3rem]">{veg}%</span>
         </div>
       </div>
       <div className="h-6 w-px bg-gray-600/70 max-md:h-px max-md:w-6" />
       <div className="flex-col gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
-        <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
-        <div className="flex-col gap-3 max-md:w-full max-md:justify-between">
+        <span className="text-m text-gray-100 whitespace-nowrap">月份</span>
+         <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
           <input type="range" min={1} max={12} step={1} value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
             className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
@@ -801,9 +801,9 @@ export default function MapSection() {
       <div className="flex flex-col gap-3 max-md:w-full">
         <div className="flex gap-2">
           <button onClick={() => setActiveSlider('past')}
-            className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'past' ? 'bg-blue-500 text-white' : 'text-gray-400 border border-gray-600 hover:text-white'}`}>📊 歷史</button>
+            className={`px-2 py-1 text-m rounded transition-all shadow-lg ${activeSlider === 'past' ? 'bg-blue-500  text-white shadow-blue-500/100' : 'text-gray-100 border border-gray-600 hover:text-white'}`}>歷史</button>
           <button onClick={() => setActiveSlider('future')}
-            className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'future' ? 'bg-purple-500 text-white' : 'text-gray-400 border border-gray-600 hover:text-white'}`}>🔮 未來</button>
+            className={`px-2 py-1 text-xs rounded transition-all ${activeSlider === 'future' ? 'bg-green-700 text-white' : 'text-gray-100 border border-gray-600 hover:text-white'}`}>未來</button>
         </div>
         
         {/* 年份控制 */}
@@ -817,7 +817,7 @@ export default function MapSection() {
                 ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((pastYear - 2013) / 10) * 100}%, #374151 ${((pastYear - 2013) / 10) * 100}%, #374151 100%)`
                 : `linear-gradient(to right, #a855f7 0%, #a855f7 ${((futureYear - 2025) / 10) * 100}%, #374151 ${((futureYear - 2025) / 10) * 100}%, #374151 100%)`
             }} />
-          <span className={`text-sm font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-purple-400'}`}>{activeSlider === 'past' ? pastYear : futureYear}年</span>
+          <span className={`text-sm font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-green-700'}`}>{activeSlider === 'past' ? pastYear : futureYear}年</span>
         </div>
       </div>
 
@@ -826,31 +826,31 @@ export default function MapSection() {
 
       {/* 月份控制 - 移到這裡 */}
       <div className="flex flex-col gap-3 max-md:w-full">
-        <span className="text-xs text-gray-400 whitespace-nowrap">📅 月份</span>
+        <span className="text-m text-gray-100 whitespace-nowrap">月份</span>
         <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
           <input type="range" min={1} max={12} step={1} value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
             className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
             style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
-          <span className="text-sm font-bold text-orange-400 min-w-[2rem]">{month}月</span>
+          <span className="text-m font-bold text-white-400 min-w-[2rem]">{month}月</span>
         </div>
       </div>
     </div>
   )}
 </div>
 
-                {/* 方案 1: 減少上邊距，確保完整顯示 */}
+        {/* 方案 1: 減少寬度和邊距，與儀表板保持距離 */}
         <div
           id="leaflet-map"
           ref={mapRef}
-          className="w-3/4 mt-1 rounded-2xl overflow-hidden border border-gray-800 max-md:mt-2 mx-auto ml-4"
+          className="w-3/4 mt-4 mr-12 rounded-2xl overflow-hidden border border-gray-800 max-md:mt-2 max-md:w-full max-md:mr-0 mx-auto ml-8"
           style={{ height: 'clamp(400px, 60vh, 600px)' }}
         />
 
         {/* 側邊資訊面板（fixed） */}
         <div className={`info-sidebar ${mode === 'population' ? 'mode-population' : 'mode-time'} ${sidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
-            <div className="sidebar-title">{mode === 'population' ? '🌱 植被溫度分析' : '⏰ 時間溫度預測'}</div>
+            <div className="sidebar-title">{mode === 'population' ? '植被溫度分析' : '時間溫度預測'}</div>
             <button className="close-btn" onClick={closeSidebar} aria-label="關閉側欄">×</button>
           </div>
 
@@ -934,16 +934,22 @@ export default function MapSection() {
       </div>
 
       <style jsx>{`
+        .bg-image-custom {
+          background-image: url('/images/09.png');
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
         .info-sidebar {
           position: fixed;
-          top: 80px;
-          right: max(16px, env(safe-area-inset-right));
-          width: clamp(280px, 28vw, 360px);
-          height: calc(100vh - 120px);
+          top: 200px;
+          right: max(64px, env(safe-area-inset-right));
+          width: clamp(280px, 24vw, 360px);
+          height: 400px;
           box-sizing: border-box;
           border-radius: 8px;
           font-size: 12px;
-          transform: translateX(110%);
+          transform: translateX(150%);
           transition: transform 0.3s ease;
           z-index: 1000;
           box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
@@ -953,14 +959,14 @@ export default function MapSection() {
         }
         .info-sidebar.open { transform: translateX(0); }
         .info-sidebar.mode-population {
-          background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%);
-          border: 2px solid #00d4ff;
-          color: #00d4ff;
+          background: linear-gradient(135deg, #2f4f4fa1 0%, #5aa2a2a1 50%, #1a0f19 100%);
+          border: 2px solid #5aa2a2ff;
+          color: #a8ffffff;
         }
         .info-sidebar.mode-time {
-          background: linear-gradient(135deg, #0a0e27 0%, #2d1f3a 50%, #1a0f19 100%);
-          border: 2px solid #ff6b9d;
-          color: #ff6b9d;
+          background: linear-gradient(135deg, #2f4f4fa1 0%, #5aa2a2a1 50%, #1a0f19 100%);
+          border: 2px solid #5aa2a2ff;
+          color: #a8ffffff;
         }
         .sidebar-header {
           padding: 15px;
@@ -1010,7 +1016,7 @@ export default function MapSection() {
         /* 新增：溫度網格樣式 */
         .temp-grid { display: grid; gap: 8px; margin: 8px 0; }
         .temp-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(255,255,255,0.05); border-radius: 4px; border-left: 3px solid currentColor; }
-        .temp-label { font-size: 10px; color: rgba(255,255,255,0.8); }
+        .temp-label { font-size: 15px; color: rgba(255,255,255,0.8); }
         .temp-value { font-size: 11px; font-weight: bold; color: currentColor; text-shadow: 0 0 5px currentColor; }
         
         .mode-info { font-size: 11px; color: rgba(255,255,255,0.8); }
@@ -1019,7 +1025,7 @@ export default function MapSection() {
 
         @media (max-width: 1024px) {
           .info-sidebar {
-            right: max(2vw, env(safe-area-inset-right));
+            right: max(4vw, env(safe-area-inset-right));
             width: min(96vw, 420px);
             top: 72px;
             height: calc(100vh - 90px);
