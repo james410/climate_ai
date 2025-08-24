@@ -30,17 +30,12 @@ module.exports = {
           primary: '#ffffff',
           secondary: '#f0f4f5',
         },
-        // 語義化顏色
-        success: '#659e7a',
-        warning: '#d6c599',
-        error: '#b3858d',
-        info: '#8af0f4',
         // 溫度色彩
         temp: {
-          low: 'rgb(102, 189, 218)',
-          medium: 'rgb(236, 190, 144)',
-          high: ' #b3858d',
-          extreme: 'rgb(239, 100, 158)',
+          low: '#9cc85b',
+          medium: '#ecd890',
+          high: '#ffbb88',
+          extreme: '#cd6b80',
         },
       },
       fontFamily: {

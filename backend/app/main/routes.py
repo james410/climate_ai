@@ -204,6 +204,46 @@ def get_yearly_temperature_data(year, colrow):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@bp.route('/formap/<string:type>/<int:year>/<int:month>', methods=['GET'])
+def get_temperature_map(type, year, month):
+    try:
+        # 檢查溫度類型是否有效
+        valid_types = [
+            "Temperature",
+            "Low_Temp",
+            "High_Temp",
+            "Apparent_Temperature",
+            "Apparent_Temperature_High",
+            "Apparent_Temperature_Low"
+        ]
+        if type not in valid_types:
+            return jsonify({
+                "error": f"Invalid temperature type. Must be one of: {', '.join(valid_types)}"
+            }), 400
+
+        # 查詢指定年月的所有網格數據
+        records = HistoryData.query.filter_by(
+            Year=year,
+            Month=month
+        ).order_by(HistoryData.column_id, HistoryData.row_id).all()
+
+        if not records:
+            return jsonify({"error": "Data not found 查無資料"}), 404
+
+        # 建立回應數據
+        result = {}
+        for record in records:
+            col_key = str(record.column_id)
+            if col_key not in result:
+                result[col_key] = {}
+            # 使用動態的溫度類型
+            result[col_key][str(record.row_id)] = getattr(record, type)
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @bp.route('/formap/NDVI/<string:type>/<path:veg>/<int:month>', methods=['GET'])
 def get_ndvi_temperature_map(type, veg, month):
     try:
