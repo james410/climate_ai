@@ -61,7 +61,7 @@ export default function EducationSection() {
         setSystemStatus({
           ready: true,
           status: 'ready',
-          text: '系統就緒'
+          text: 'ready'
         });
         // 僅在訊息為空時加入歡迎訊息
         setMessages(prev => {
@@ -252,7 +252,7 @@ export default function EducationSection() {
     const { id, content, type } = message;
     
     // 訊息框樣式依 type 動態設定
-    let msgClass = "message mb-3 p-3 rounded-2xl max-w-[80%] break-words decoration-double font-bold border-2 border-green-100 shadow-lg ";
+    let msgClass = "message mb-3 p-3 rounded-2xl max-w-[80%] break-words decoration-double font-bold border-4 border-green-100 shadow-lg bg-white/10 text-white rounded-bl-sm text-2xl";
     if (type === 'user') {
       msgClass += "bg-white/10 text-white ml-auto rounded-br-sm";
     } else if (type === 'bot') {
@@ -287,9 +287,14 @@ export default function EducationSection() {
 
   return (
     <section ref={sectionRef} className="py-20 px-4 bg-transparent relative overflow-visible">
+        <img
+          src="/images/04.png"
+          alt="BG"
+          className="absolute top-0 left-0 w-full h-full object-cover z-0 opacity-40 pointer-events-none"
+        />
       {/* 雙層背景效果 - 同時使用兩個背景創造豐富層次 */}
       {/* 底層：CSS 動畫背景 - 提供鼠標跟隨和基礎漸變效果 */}
-      <CSSAnimatedBackground />
+      {/* <CSSAnimatedBackground /> */}
       
       {/* 上層：滑鼠跟隨粒子背景 - 提供互動式粒子效果 */}
       <MouseFollowCanvasBackground />
@@ -301,7 +306,7 @@ export default function EducationSection() {
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <h3 className="text-[clamp(2rem,6vw,3.5rem)] font-extrabold bg-gradient-to-b from-red-300 to-green-300 text-transparent bg-clip-text mb-6">
+          <h3 className="text-[clamp(2rem,4vw,3rem)] font-extrabold text-white/60 mb-6">
             Urban Heat School 熱島小學堂
           </h3>
       
@@ -313,11 +318,11 @@ export default function EducationSection() {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
             className="bg-white/0 backdrop-blur-lg rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
-          style={{ height: '70vh' }}
+          style={{ height: '80vh' }}
         >
           {/* 聊天機器人標題區 */}
-            <div className="bg-gradient-to-r from-green-200/60 via-green-300/60 to-green-100/60 text-black p-6 text-center">
-            <h4 className="text-xl font-bold mb-2">🤖 熱島小學堂 AI 助理</h4>
+            <div className="text-white p-6 text-center">
+            {/* <h4 className="text-xl font-bold mb-2">熱島小學堂 </h4> */}
             <div className="flex items-center justify-center space-x-2 text-sm opacity-90">
               <div 
                 className={`w-2 h-2 rounded-full ${
@@ -339,7 +344,7 @@ export default function EducationSection() {
           </div>
 
           {/* 輸入區 */}
-          <div className="p-6 bg-green-100/80 backdrop-blur-sm border-t border-gray-200/50">
+          <div className="p-6 border-t border-gray-200/50 h-20">
             <div className="flex space-x-3 mb-3">
               <input
                 ref={messageInputRef}
@@ -348,7 +353,7 @@ export default function EducationSection() {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 // 使用者文字輸入設定
-                className="flex-1 px-4 py-3 bg-gray-800 text-white font-bold border border-gray-700 rounded-full outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:bg-gray-700 disabled:text-gray-400 placeholder:text-gray-400"
+                className="flex-1 px-4 py-10 h-14 bg-primary text-white text-1xl font-bold border border-primary rounded-full outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:bg-primary/60 disabled:text-white/60 placeholder:text-white/60"
                 placeholder="請輸入您關於都市熱島的問題..."
                 disabled={!systemStatus.ready || isLoading}
               />
@@ -363,25 +368,7 @@ export default function EducationSection() {
               </motion.button>
             </div>
             
-            {/* 控制按鈕 */}
-            <div className="flex justify-center space-x-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={clearChat}
-                className="px-4 py-2 text-sm border border-primary text-primary rounded-full hover:bg-primary hover:text-black transition-all"
-              >
-                🗑️ 清除對話
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={checkStatus}
-                className="px-4 py-2 text-sm border border-primary text-primary rounded-full hover:bg-primary hover:text-black transition-all"
-              >
-                📊 檢查狀態
-              </motion.button>
-            </div>
+            {/* 控制按鈕功能已移除 */}
           </div>
         </motion.div>
       </div>
