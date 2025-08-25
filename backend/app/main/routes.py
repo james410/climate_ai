@@ -401,3 +401,118 @@ def get_data(year, month, colrow):
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route('/NDVIbymonth/<path:veg>/<string:colrow>', methods=['GET'])
+def get_ndvi_yearly_data(veg, colrow):
+    """
+    獲取指定植被覆蓋率和位置的全年溫度數據
+    路由格式: /NDVIbymonth/<vegetation>/<column_id>+<row_id>
+    """
+    try:
+        # 檢查 vegetation_coverage 是否為有效的浮點數
+        try:
+            vegetation_coverage = float(veg)
+        except ValueError:
+            return jsonify({"error": "Invalid vegetation coverage value 植被覆蓋率格式無效"}), 400
+
+        # 檢查 column_id+row_id 格式
+        if '+' not in colrow:
+            return jsonify({"error": "Invalid format, expected column_id+row_id 無效格式，請輸入column ID+row ID"}), 400
+
+        column_id_str, row_id_str = colrow.split('+', 1)
+        try:
+            column_id = int(column_id_str)
+            row_id = int(row_id_str)
+        except ValueError:
+            return jsonify({"error": "Invalid column_id or row_id format 無效的行列格式"}), 400
+
+        # 獲取該位置所有月份的數據
+        months = db.session.query(NDVITemp.Month).filter_by(
+            column_id=column_id,
+            row_id=row_id
+        ).distinct().all()
+
+        if not months:
+            return jsonify({"error": "Data not found 查無資料"}), 404
+
+        # 建立回應數據
+        result = {}
+        
+        for (month,) in months:
+            # 對每個月份，先找完全匹配的植被覆蓋率
+            record = NDVITemp.query.filter_by(
+                Month=month,
+                column_id=column_id,
+                row_id=row_id,
+                Vegetation_Coverage=vegetation_coverage
+            ).first()
+            
+            if not record:
+                # 如果沒有完全匹配的，找最接近的植被覆蓋率
+                record = NDVITemp.query.filter_by(
+                    Month=month,
+                    column_id=column_id,
+                    row_id=row_id
+                ).order_by(
+                    func.abs(NDVITemp.Vegetation_Coverage - vegetation_coverage)
+                ).first()
+            
+            if record:
+                result[str(month)] = {
+                    "Temperature": getattr(record, "Temperature_Predicted"),
+                    "High_Temp": getattr(record, "High_Temp_Predicted"),
+                    "Low_Temp": getattr(record, "Low_Temp_Predicted")
+                }
+
+        if not result:
+            return jsonify({"error": "Data not found 查無資料"}), 404
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route('/NDVIbycoverage/<int:month>/<string:colrow>', methods=['GET'])
+def get_ndvi_vegetation_data(month, colrow):
+    """
+    獲取指定月份和位置的不同植被覆蓋率溫度數據
+    路由格式: /NDVIbycoverage/<month>/<column_id>+<row_id>
+    """
+    try:
+        # 檢查 column_id+row_id 格式
+        if '+' not in colrow:
+            return jsonify({"error": "Invalid format, expected column_id+row_id 無效格式，請輸入column ID+row ID"}), 400
+
+        column_id_str, row_id_str = colrow.split('+', 1)
+        try:
+            column_id = int(column_id_str)
+            row_id = int(row_id_str)
+        except ValueError:
+            return jsonify({"error": "Invalid column_id or row_id format 無效的行列格式"}), 400
+
+        # 獲取該月份和位置所有的植被覆蓋率數據
+        records = NDVITemp.query.filter_by(
+            Month=month,
+            column_id=column_id,
+            row_id=row_id
+        ).order_by(NDVITemp.Vegetation_Coverage).all()
+
+        if not records:
+            return jsonify({"error": "Data not found 查無資料"}), 404
+
+        # 建立回應數據
+        result = {}
+        
+        for record in records:
+            # 將植被覆蓋率四捨五入到小數點後一位作為 key
+            veg_key = str(round(float(record.Vegetation_Coverage), 1))
+            result[veg_key] = {
+                "Temperature": getattr(record, "Temperature_Predicted"),
+                "High_Temp": getattr(record, "High_Temp_Predicted"),
+                "Low_Temp": getattr(record, "Low_Temp_Predicted")
+            }
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

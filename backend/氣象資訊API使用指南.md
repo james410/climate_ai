@@ -8,6 +8,8 @@
 |----------|---------------------------------------------|--------------------------------------|
 | 歷史資料 | `/data/<year>/<month>/<column_id>+<row_id>` | 依指定年月與格點 ID 查詢歷史氣候資料       |
 | NDVI預測 | `/NDVI/<month>/<vegetation>/<column_id>+<row_id>` | 依月份、植被覆蓋率與格點 ID 查詢預測氣候資料 |
+| NDVI月度資料 | `/NDVIbymonth/<vegetation>/<column_id>+<row_id>` | 依植被覆蓋率與格點 ID 查詢全年溫度數據 |
+| NDVI覆蓋率資料 | `/NDVIbycoverage/<month>/<column_id>+<row_id>` | 依月份與格點 ID 查詢不同植被覆蓋率的溫度數據 |
 | 年度天氣狀況 | `/annual/<weather_conditions>/<year>/<column_id>+<row_id>` | 依年份與格點 ID 查詢特定天氣狀況的全年數據 |
 | 年度溫度數據 | `/annual/temp/<year>/<column_id>+<row_id>` | 依年份與格點 ID 查詢所有溫度相關數據的全年資料 |
 | 格點溫度地圖 | `/formap/<type>/<year>/<month>` | 依年月查詢所有格點的指定類型溫度數據 |
@@ -67,6 +69,218 @@ GET http://localhost:5000/data/2020/7/15+23
   }
 }
 ```
+
+---
+
+### 取得 NDVI 預測資料
+
+```bash
+GET http://localhost:5000/NDVI/7/0.5/15+23
+```
+
+- 7 → 月份
+- 0.5 → 植被覆蓋率（0.0 ~ 1.0）
+- 15 → column_id
+- 23 → row_id
+
+回應範例：
+
+```json
+{
+  "apparent_temperatures": {
+    "current": 28.5,
+    "high": 31.2,
+    "low": 24.5
+  },
+  "predicted_temperatures": {
+    "current": 27.4,
+    "high": 31.2,
+    "low": 24.5
+  },
+  "weather_conditions": {
+    "humidity": 78.5,
+    "pressure": 1012.3,
+    "rain": 128.0,
+    "solar": 5.6,
+    "wind": 3.4
+  },
+  "location": {
+    "column_id": 15,
+    "row_id": 23,
+    "latitude": 25.1131,
+    "longitude": 121.2971,
+    "elevation": 68.0
+  },
+  "metadata": {
+    "id": 12345,
+    "month": 7,
+    "vegetation": 0.5,
+    "water_body": 0.05
+  }
+}
+```
+
+---
+
+### 取得 NDVI 月度資料
+
+```bash
+GET http://localhost:5000/NDVIbymonth/0.5/15+23
+```
+
+- 0.5 → 植被覆蓋率（0.0 ~ 1.0）
+- 15 → column_id
+- 23 → row_id
+
+回應範例：
+
+```json
+{
+    "1": {
+        "Temperature": 25.6,
+        "High_Temp": 28.5,
+        "Low_Temp": 22.5
+    },
+    "2": {
+        "Temperature": 26.1,
+        "High_Temp": 29.1,
+        "Low_Temp": 23.1
+    },
+    "3": {
+        "Temperature": 27.3,
+        "High_Temp": 30.2,
+        "Low_Temp": 24.2
+    },
+    "4": {
+        "Temperature": 28.0,
+        "High_Temp": 31.0,
+        "Low_Temp": 25.0
+    },
+    "5": {
+        "Temperature": 29.5,
+        "High_Temp": 32.5,
+        "Low_Temp": 26.5
+    },
+    "6": {
+        "Temperature": 31.2,
+        "High_Temp": 34.2,
+        "Low_Temp": 28.2
+    },
+    "7": {
+        "Temperature": 32.8,
+        "High_Temp": 35.8,
+        "Low_Temp": 29.8
+    },
+    "8": {
+        "Temperature": 32.1,
+        "High_Temp": 35.1,
+        "Low_Temp": 29.1
+    },
+    "9": {
+        "Temperature": 30.5,
+        "High_Temp": 33.5,
+        "Low_Temp": 27.5
+    },
+    "10": {
+        "Temperature": 28.8,
+        "High_Temp": 31.8,
+        "Low_Temp": 25.8
+    },
+    "11": {
+        "Temperature": 26.9,
+        "High_Temp": 29.9,
+        "Low_Temp": 23.9
+    },
+    "12": {
+        "Temperature": 25.2,
+        "High_Temp": 28.2,
+        "Low_Temp": 22.2
+    }
+}
+```
+
+回應數據說明：
+- 鍵值（如 "1", "2", "12"）代表月份
+- 每個月份包含三種溫度類型：Temperature（預測溫度）、High_Temp（最高預測溫度）、Low_Temp（最低預測溫度）
+
+---
+
+### 取得 NDVI 覆蓋率資料
+
+```bash
+GET http://localhost:5000/NDVIbycoverage/7/15+23
+```
+
+- 7 → 月份
+- 15 → column_id
+- 23 → row_id
+
+回應範例：
+
+```json
+{
+    "0.0": {
+        "Temperature": 33.2,
+        "High_Temp": 36.8,
+        "Low_Temp": 29.6
+    },
+    "0.1": {
+        "Temperature": 32.8,
+        "High_Temp": 36.2,
+        "Low_Temp": 29.4
+    },
+    "0.2": {
+        "Temperature": 32.4,
+        "High_Temp": 35.6,
+        "Low_Temp": 29.2
+    },
+    "0.3": {
+        "Temperature": 32.0,
+        "High_Temp": 35.0,
+        "Low_Temp": 29.0
+    },
+    "0.4": {
+        "Temperature": 31.6,
+        "High_Temp": 34.4,
+        "Low_Temp": 28.8
+    },
+    "0.5": {
+        "Temperature": 31.2,
+        "High_Temp": 33.8,
+        "Low_Temp": 28.6
+    },
+    "0.6": {
+        "Temperature": 30.8,
+        "High_Temp": 33.2,
+        "Low_Temp": 28.4
+    },
+    "0.7": {
+        "Temperature": 30.4,
+        "High_Temp": 32.6,
+        "Low_Temp": 28.2
+    },
+    "0.8": {
+        "Temperature": 30.0,
+        "High_Temp": 32.0,
+        "Low_Temp": 28.0
+    },
+    "0.9": {
+        "Temperature": 29.6,
+        "High_Temp": 31.4,
+        "Low_Temp": 27.8
+    },
+    "1.0": {
+        "Temperature": 29.2,
+        "High_Temp": 30.8,
+        "Low_Temp": 27.6
+    }
+}
+```
+
+回應數據說明：
+- 鍵值（如 "0.0", "0.1", "1.0"）代表植被覆蓋率
+- 每個植被覆蓋率包含三種溫度類型：Temperature（預測溫度）、High_Temp（最高預測溫度）、Low_Temp（最低預測溫度）
+- 系統會自動處理不精確的植被覆蓋率數值（如 0.10000001 會顯示為 0.1）
 
 ---
 
@@ -217,59 +431,15 @@ GET http://localhost:5000/formap/NDVI/Temperature_Predicted/0.1/11
 - 第二層鍵（如 "0", "1", "2"）代表 row_id
 - 數值為該格點的指定類型溫度
 
-### 取得 NDVI 預測資料
-
-```bash
-GET http://localhost:5000/NDVI/7/0.5/15+23
-```
-
-- 7 → 月份
-- 0.5 → 植被覆蓋率（0.0 ~ 1.0）
-- 15 → column_id
-- 23 → row_id
-
-回應範例：
-
-```json
-{
-  "apparent_temperatures": {
-    "current": 28.5,
-    "high": 31.2,
-    "low": 24.5
-  },
-  "predicted_temperatures": {
-    "current": 27.4,
-    "high": 31.2,
-    "low": 24.5
-  },
-  "weather_conditions": {
-    "humidity": 78.5,
-    "pressure": 1012.3,
-    "rain": 128.0,
-    "solar": 5.6,
-    "wind": 3.4
-  },
-  "location": {
-    "column_id": 15,
-    "row_id": 23,
-    "latitude": 25.1131,
-    "longitude": 121.2971,
-    "elevation": 68.0
-  },
-  "metadata": {
-    "id": 12345,
-    "month": 7,
-    "vegetation": 0.5,
-    "water_body": 0.05
-  }
-}
-```
-
 ---
 
 ## 3️⃣ 回應資料結構說明
 
 所有 API 回應均採用結構化 JSON 格式，主要分為以下幾個部分：
+
+### 單點資料查詢 API 回應結構
+
+適用於：`/data`, `/NDVI` 單點查詢
 
 1. `apparent_temperatures`: 體感溫度相關數據
    - `current`: 當前體感溫度
@@ -302,12 +472,27 @@ GET http://localhost:5000/NDVI/7/0.5/15+23
    - `vegetation`: 植被覆蓋率
    - `water_body`: 水體覆蓋率
 
+### 時間序列資料查詢 API 回應結構
+
+適用於：`/NDVIbymonth`, `/NDVIbycoverage`, `/annual` 等
+
+- 以時間或參數為鍵值的巢狀物件
+- 內層包含對應的溫度或氣象數據
+- 數據格式簡潔，便於時間序列圖表繪製
+
+### 地圖資料查詢 API 回應結構
+
+適用於：`/formap` 系列
+
+- 雙層巢狀結構：`column_id` → `row_id` → 數值
+- 適合直接用於地理網格的視覺化呈現
+
 ## 4️⃣ 注意事項
 
 - Response 格式為結構化 JSON，便於前端處理與渲染
 - 年份與月份需為數字，月份範圍為 1-12
-- 植被覆蓋率範圍為 0.0-1.0
+- 植被覆蓋率範圍為 0.0-1.0，系統會自動處理不精確的浮點數（如 0.10000001 → 0.1）
 - 若查無資料，會回傳 404 狀態碼與錯誤訊息
-- API 預設無分頁功能，單次請求只會返回單一格點的資料
-- 所有氣象資料會自動包含對應的經緯度與海拔資訊  
-
+- NDVI 相關 API 會自動尋找最接近的植被覆蓋率數值
+- 所有氣象資料會自動包含對應的經緯度與海拔資訊
+- 新增的 `NDVIbymonth` 和 `NDVIbycoverage` API 專門用於時間序列分析和植被覆蓋率對比分析
