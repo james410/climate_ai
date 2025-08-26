@@ -912,8 +912,8 @@ export default function MapSection() {
 
                 {/* 模式特定資訊（描述保留） */}
                 <div className="section">
-                  <h4 className="section-title">{mode === 'population' ? '🌱 植被影響' : '⏰ 時間變化'}</h4>
-                  <div className="mode-info">
+                  <h4 className="section-title text-caption01">{mode === 'population' ? '🌱 植被影響' : '⏰ 時間變化'}</h4>
+                  <div className="mode-info text-caption01">
                     {mode === 'population' ? (
                       <div>
                         <div>當前設定: {veg}% 植被覆蓋</div>
@@ -934,6 +934,9 @@ export default function MapSection() {
       </div>
 
       <style jsx>{`
+        :root {
+          --font-size-caption01: clamp(0.9375rem, 1.5vw, 1.125rem);
+        }
         .bg-image-custom {
           background-image: url('/images/09.png');
           background-size: cover;
@@ -948,7 +951,7 @@ export default function MapSection() {
           height: 400px;
           box-sizing: border-box;
           border-radius: 8px;
-          font-size: 12px;
+          font-size: var(--font-size-caption01);
           transform: translateX(150%);
           transition: transform 0.3s ease;
           z-index: 1000;
@@ -990,38 +993,38 @@ export default function MapSection() {
           background: linear-gradient(90deg, transparent, currentColor, transparent);
           opacity: 0.5;
         }
-        .sidebar-title { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 0 10px currentColor; }
-        .close-btn { background: transparent; border: 1px solid currentColor; color: currentColor; font-size: 16px; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .sidebar-title { font-size: var(--font-size-caption01); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 0 10px currentColor; }
+        .close-btn { background: transparent; border: 1px solid currentColor; color: currentColor; font-size: var(--font-size-caption01); width: 28px; height: 28px; border-radius: 4px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
         .close-btn:hover { background: currentColor; color: #0a0e27; box-shadow: 0 0 15px currentColor; }
         .sidebar-content { padding: 15px; height: calc(100% - 70px); overflow-y: auto; scrollbar-gutter: stable both-edges; }
-        .no-selection { text-align: center; font-size: 14px; color: rgba(255,255,255,0.85); margin-top: 30px; }
+        .no-selection { text-align: center; font-size: var(--font-size-caption01); color: rgba(255,255,255,0.85); margin-top: 30px; }
         .section { margin-bottom: 20px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
-        .section-title { font-size: 13px; margin-bottom: 10px; font-weight: bold; color: currentColor; text-shadow: 0 0 5px currentColor; }
-        .info-grid { display: grid; gap: 6px; font-size: 11px; }
+        .section-title { font-size: var(--font-size-caption01); margin-bottom: 10px; font-weight: bold; color: currentColor; text-shadow: 0 0 5px currentColor; }
+        .info-grid { display: grid; gap: 6px; font-size: var(--font-size-caption01); }
         .info-grid div { color: rgba(255,255,255,0.9); }
         .info-grid strong { color: currentColor; font-weight: bold; }
-        .result-display { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; font-size: 11px; }
+        .result-display { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; font-size: var(--font-size-caption01); }
         .result-display .temp { font-size: 1.3em; font-weight: bold; margin: 8px 0; color: currentColor; text-shadow: 0 0 8px currentColor; }
-        .loading { text-align: center; color: rgba(255,255,255,0.7); font-style: italic; }
+        .loading { text-align: center; color: rgba(255,255,255,0.7); font-style: italic; font-size: var(--font-size-caption01); }
         .error-section { background: rgba(255,0,0,0.1); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,0,0,0.3); }
-        .error-msg { color: #ff6b6b; font-size: 11px; margin-bottom: 8px; }
+        .error-msg { color: #ff6b6b; font-size: var(--font-size-caption01); margin-bottom: 8px; }
         .url-details { margin-top: 8px; }
-        .url-details summary { cursor: pointer; font-size: 10px; color: rgba(255,255,255,0.6); margin-bottom: 5px; }
-        .url-list { font-size: 9px; color: rgba(255,255,255,0.5); max-height: 80px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 4px; }
+        .url-details summary { cursor: pointer; font-size: var(--font-size-caption01); color: rgba(255,255,255,0.6); margin-bottom: 5px; }
+        .url-list { font-size: var(--font-size-caption01); color: rgba(255,255,255,0.5); max-height: 80px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 4px; }
         .url-list div { margin-bottom: 2px; word-break: break-all; }
-        .api-data { font-size: 11px; color: rgba(255,255,255,0.9); }
+        .api-data { font-size: var(--font-size-caption01); color: rgba(255,255,255,0.9); }
         .api-data div { margin-bottom: 6px; }
         .api-data .temp { font-size: 1.3em; font-weight: bold; color: currentColor; text-shadow: 0 0 8px currentColor; }
         
         /* 新增：溫度網格樣式 */
         .temp-grid { display: grid; gap: 8px; margin: 8px 0; }
         .temp-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(255,255,255,0.05); border-radius: 4px; border-left: 3px solid currentColor; }
-        .temp-label { font-size: 15px; color: rgba(255,255,255,0.8); }
-        .temp-value { font-size: 11px; font-weight: bold; color: currentColor; text-shadow: 0 0 5px currentColor; }
+        .temp-label { font-size: var(--font-size-caption01); color: rgba(255,255,255,0.8); }
+        .temp-value { font-size: var(--font-size-caption01); font-weight: bold; color: currentColor; text-shadow: 0 0 5px currentColor; }
         
-        .mode-info { font-size: 11px; color: rgba(255,255,255,0.8); }
+        .mode-info { font-size: var(--font-size-caption01); color: rgba(255,255,255,0.8); }
         .mode-info div { margin-bottom: 6px; }
-        .info-text { font-style: italic; color: rgba(255,255,255,0.7); font-size: 10px; }
+        .info-text { font-style: italic; color: rgba(255,255,255,0.7); font-size: var(--font-size-caption01); }
 
         .bg-temp-low { background: #ddab17; }
         .bg-temp-medium { background: #eb7846; }

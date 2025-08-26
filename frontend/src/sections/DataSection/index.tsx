@@ -59,18 +59,18 @@ export default function HeatIslandReportLayout() {
 
         {/* 文字 - 疊在圖片右下角 */}
         <motion.div
-          className="relative ml-[42%] mt-[12%] max-w-lg space-y-6 z-10 bg-[#1a1d1f]/65 backdrop-blur-sm p-8 rounded-lg"
+          className="relative ml-[42%] mt-[12%] max-w-[55%] space-y-6 z-10 bg-[#1a1d1f]/65 backdrop-blur-sm p-8 rounded-lg"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-100px' }}
           variants={fadeIn}
           transition={{ delay: 0.3 }}
         >
-          <h2 className="text-xl font-medium text-accent mb-4">一年比一年更熱的現實</h2>
-          <p className="text-base leading-relaxed">
+          <h2 className="text-subtitle02 font-medium text-accent mb-4">一年比一年更熱的現實</h2>
+          <p className="text-content01 leading-relaxed text-justify ">
             近十年來，台北與新北地區的平均氣溫穩步上升，每十年約增加<strong className="text-accent">0.9°C</strong>；當我們回顧過去的五年與展望未來的五年，溫度差距更接近<strong className="text-accent">0.8°C</strong>。
           </p>
-          <p className="text-base leading-relaxed opacity-90">
+          <p className="text-content01 leading-relaxed opacity-90 text-justify">
             這樣的增幅，猶如初夏午後的緩緩升溫，卻無形中堆積在每一個日常片刻中。站在夜色之下，空氣不再如從前般涼爽，那逐漸消逝的涼意，正悄然影響每一個城市的日常與夜晚。
           </p>
         </motion.div>
@@ -82,30 +82,30 @@ export default function HeatIslandReportLayout() {
         <div className="space-y-12 relative z-10">
           {/* 第一段文字 */}
           <motion.div
-            className="relative ml-[45%] w-[70%] max-w-[120%] space-y-6 z-10 bg-[#1a1d1f]/65 backdrop-blur-sm p-8 rounded-lg"
+            className="relative ml-[38%] w-[75%] max-w-[120%] space-y-6 z-10 bg-[#1a1d1f]/65 backdrop-blur-sm p-8 rounded-lg"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-100px' }}
             variants={slideIn}
             transition={{ delay: 0.3 }}
           >
-            <h2 className="text-xl font-medium text-accent mb-4">日夜溫差的悄然收斂</h2>
-            <p className="text-base leading-relaxed">
+            <h2 className="text-subtitle02 font-medium text-accent mb-4">日夜溫差的悄然收斂</h2>
+            <p className="text-content01 leading-relaxed text-justify">
               數據顯示，日夜溫差每十年縮小約<strong className="text-accent">0.7°C</strong>，平均月低溫上升<strong className="text-accent">1.23°C</strong> 。當夜間溫度上升，涼意轉被悶熱取代。未來的城市輪廓將在燈火中繼續延展，而黑夜則難以消去累積的餘溫。
             </p>
           </motion.div>
 
           {/* 第二段文字 */}
           <motion.div
-            className="space-y-4 ml-[12%] max-w-[50%]"
+            className="space-y-4 ml-[12%] max-w-[80%]"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-100px' }}
             variants={fadeIn}
             transition={{ delay: 0.5 }}
           >
-            <h3 className="text-xl font-medium text-accent">綠覆與海風：微妙的降溫之道</h3>
-            <p className="text-base leading-relaxed">
+            <h3 className="text-subtitle02 font-medium text-accent">綠覆與海風：微妙的降溫之道</h3>
+            <p className="text-content01 leading-relaxed text-justify [text-align-last:justify]">
               研究指出，沿海地區綠覆每提升10%，平均氣溫可下降約<strong className="text-accent">0.02°C</strong>，夜間更可降約<strong className="text-accent">0.03°C</strong>。相對市區同增量綠覆，夜間僅微降<strong className="text-accent">0.01°C</strong>，白天降溫效果有限。當我們在海邊種下綠植，細微的變化正逐漸累積，為城市帶來一絲涼意。
             </p>
           </motion.div>
@@ -135,7 +135,7 @@ export default function HeatIslandReportLayout() {
 
 
       {/* 第三區塊：背景圖片加遮罩，文字分行排列 */}
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
         {/* 背景圖片 */}
         <div className="absolute inset-0">
           <Image
@@ -169,7 +169,7 @@ export default function HeatIslandReportLayout() {
           variants={fadeIn}
         >
           <div className="space-y-4 mt-12">
-            <p className="text-lg leading-relaxed text-text-primary">
+            <p className="text-subtitle02 leading-relaxed text-text-primary">
               城市的熱島效應，是時間和空間交織而成的長篇敘事。<br />
               每一次溫度的改變，都是自然與人為力量的共鳴。<br />
               唯有在細微之處注入智慧，才能讓城市在未來的日子裡，<br />

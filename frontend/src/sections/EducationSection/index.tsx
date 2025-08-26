@@ -252,13 +252,13 @@ export default function EducationSection() {
     const { id, content, type } = message;
     
     // 訊息框樣式依 type 動態設定
-    let msgClass = "message mb-3 p-3 rounded-2xl max-w-[80%] break-words decoration-double font-bold border-4 border-green-100 shadow-lg bg-white/10 text-white rounded-bl-sm text-2xl";
+    let msgClass = "message mb-3 p-3 rounded-2xl max-w-[80%] break-words decoration-double text-content01 font-bold border-4 border-green-100 shadow-lg bg-white/10 text-white rounded-bl-sm text-2xl";
     if (type === 'user') {
       msgClass += "bg-white/10 text-white ml-auto rounded-br-sm";
     } else if (type === 'bot') {
       msgClass += "bg-white/10 text-white rounded-bl-sm";
     } else if (type === 'system') {
-      msgClass += "bg-blue-50 text-white text-center text-sm mx-auto";
+      msgClass += "bg-blue-50 text-white text-center text-content01 mx-auto";
     } else if (type === 'error') {
       msgClass += "bg-red-50 text-white border border-red-200";
     } else {
@@ -306,7 +306,7 @@ export default function EducationSection() {
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <h3 className="text-[clamp(2rem,4vw,3rem)] font-extrabold text-white/60 mb-6">
+          <h3 className="text-[clamp(2rem,4vw,3rem)] font-extrabold font-mono text-text-primary">
             Urban Heat School 熱島小學堂
           </h3>
       
@@ -322,8 +322,8 @@ export default function EducationSection() {
         >
           {/* 聊天機器人標題區 */}
             <div className="text-white p-6 text-center">
-            {/* <h4 className="text-xl font-bold mb-2">熱島小學堂 </h4> */}
-            <div className="flex items-center justify-center space-x-2 text-sm opacity-90">
+            {/* <h4 className="text-content01 font-bold mb-2">熱島小學堂 </h4> */}
+            <div className="flex items-center justify-center space-x-2 text-content01 opacity-90">
               <div 
                 className={`w-2 h-2 rounded-full ${
                   systemStatus.status === 'ready' ? 'bg-green-400' : 
@@ -337,7 +337,7 @@ export default function EducationSection() {
           {/* 聊天訊息區 */}
           <div 
             ref={chatMessagesRef}
-            className="flex-1 p-6 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white/0"
+            className="flex-1 p-6 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white/0 text-content01"
             style={{ height: 'calc(100% - 200px)' }}
           >
             {messages.map(message => renderMessage(message))}
@@ -353,7 +353,7 @@ export default function EducationSection() {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 // 使用者文字輸入設定
-                className="flex-1 px-4 py-10 h-14 bg-primary text-white text-1xl font-bold border border-primary rounded-full outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:bg-primary/60 disabled:text-white/60 placeholder:text-white/60"
+                className="flex-1 px-4 py-10 h-14 bg-primary text-white text-content01 font-bold border border-primary rounded-full outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all disabled:bg-primary/60 disabled:text-white/60 placeholder:text-white/60"
                 placeholder="請輸入您關於都市熱島的問題..."
                 disabled={!systemStatus.ready || isLoading}
               />
