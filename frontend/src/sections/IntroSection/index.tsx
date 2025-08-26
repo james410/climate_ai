@@ -12,7 +12,7 @@ export default function Intro() {
   const { scrollYProgress: p2 } = useScroll({ target: ref2, offset: ['start end', 'end start'] });
 
   // 淡入淡出區間：30%→45% 漸顯，55%→70% 漸隱
-  const fadeRange = [0.3, 0.45, 0.55, 0.7] as const;
+  const fadeRange = [0.3, 0.45, 0.55, 0.7];
   const opacity1 = useTransform(p1, fadeRange, [0, 1, 1, 0]);
   const opacity2 = useTransform(p2, fadeRange, [0, 1, 1, 0]);
 
@@ -26,11 +26,7 @@ export default function Intro() {
           className="text-center max-w-4xl w-full"
         >
           <h2
-            className="font-chinese text-white leading-relaxed tracking-wider mb-8"
-            style={{
-              fontSize: 'clamp(1.25rem,5vw,1.5rem)',
-              lineHeight: '1.6',
-            }}
+            className="font-chinese text-white text-subtitle01 leading-relaxed tracking-wider mb-8"
           >
             我們在城市裡行走，
             彷彿它不曾說話。<br />
@@ -62,11 +58,7 @@ export default function Intro() {
           className="text-center max-w-4xl w-full"
         >
           <h2
-            className="font-chinese text-white leading-relaxed tracking-wider mb-8"
-            style={{
-              fontSize: 'clamp(1.25rem,5vw,1.5rem)',
-              lineHeight: '1.6',
-            }}
+            className="font-chinese text-white text-subtitle01 leading-relaxed tracking-wider mb-8"
           >
             你願意，聽聽它過去的記憶，<br />
             和我們能共同寫下的未來嗎？

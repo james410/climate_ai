@@ -46,9 +46,11 @@ module.exports = {
         chinese: ['"Noto Sans TC"', '"Source Han Sans"', '"PingFang TC"', '"Microsoft JhengHei"', 'sans-serif'],
       },
       fontSize: {
-        display: ['7rem', { lineHeight: '1.2' }],
-        title01: ['clamp(1rem, 6vw, 4rem)', { lineHeight: '1.2' }],
-        subtitle01: ['clamp(0.7rem, 2vw, 1.8rem)', { lineHeight: '1.4' }],
+        display: ['clamp(3rem,6vw,5rem)', { lineHeight: '1.2' }],
+        title01: ['clamp(1.8rem, 5vw, 3.5rem)', { lineHeight: '1.4' }],
+        subtitle01: ['clamp(1rem,3vw,2rem)', { lineHeight: '1.4' }],
+        content01: ['clamp(0.9375rem,2.25vw,1.325rem)', { lineHeight: '1.6' }],
+        caption01: ['clamp(0.9375rem, 1.5vw, 1.125rem)', { lineHeight: '1.4' }], 
       },
       dropShadow: {
         glow: '0 0 10px rgba(138, 240, 244, 0.6)',
