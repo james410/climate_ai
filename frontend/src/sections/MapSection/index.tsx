@@ -1023,6 +1023,11 @@ export default function MapSection() {
         .mode-info div { margin-bottom: 6px; }
         .info-text { font-style: italic; color: rgba(255,255,255,0.7); font-size: 10px; }
 
+        .bg-temp-low { background: #ddab17; }
+        .bg-temp-medium { background: #eb7846; }
+        .bg-temp-high { background: #cd3e5d; }
+        .bg-temp-extreme { background: #9f2f7c; }
+
         @media (max-width: 1024px) {
           .info-sidebar {
             right: max(4vw, env(safe-area-inset-right));
