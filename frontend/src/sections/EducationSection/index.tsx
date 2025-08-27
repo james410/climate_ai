@@ -252,7 +252,7 @@ export default function EducationSection() {
     const { id, content, type } = message;
     
     // 訊息框樣式依 type 動態設定
-    let msgClass = "message mb-3 p-3 rounded-2xl max-w-[80%] break-words decoration-double text-content01 font-bold border-4 border-green-100 shadow-lg bg-white/10 text-white rounded-bl-sm text-2xl";
+    let msgClass = "message mb-3 p-3 rounded-2xl max-w-[80%] break-words decoration-double text-content01 font-bold border-4 border-green-100 shadow-lg bg-white/10 text-white rounded-bl-sm text-4xl";
     if (type === 'user') {
       msgClass += "bg-white/10 text-white ml-auto rounded-br-sm";
     } else if (type === 'bot') {
@@ -288,13 +288,13 @@ export default function EducationSection() {
   return (
     <section ref={sectionRef} className="py-20 px-4 bg-transparent relative overflow-visible">
         <img
-          src="/images/04.png"
+          src="/images/010.png"
           alt="BG"
           className="absolute top-0 left-0 w-full h-full object-cover z-0 opacity-40 pointer-events-none"
         />
       {/* 雙層背景效果 - 同時使用兩個背景創造豐富層次 */}
       {/* 底層：CSS 動畫背景 - 提供鼠標跟隨和基礎漸變效果 */}
-      {/* <CSSAnimatedBackground /> */}
+       {/* <CSSAnimatedBackground /> */}
       
       {/* 上層：滑鼠跟隨粒子背景 - 提供互動式粒子效果 */}
       <MouseFollowCanvasBackground />
