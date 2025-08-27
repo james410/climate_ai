@@ -46,8 +46,8 @@ class NoDataError extends Error {
   }
 }
 
-async function fetchJSON<T = any>(url: string): Promise<T> {
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+async function fetchJSON<T = any>(url: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(url, { headers: { Accept: 'application/json' }, ...init });
   const text = await res.text();
   if (!res.ok) {
     if (res.status === 404) {
@@ -388,9 +388,17 @@ export default function MapSection() {
     return () => { aborted = true; };
   }, [mode, activeSlider, pastYear, futureYear, month]);
 
+  // —— 批次：植被模式 for-map
+  // 需求：在植被模式中「點擊格子後」就不要再打 for-map 端點，只專注單格溫度
   useEffect(() => {
     if (mode !== 'population') {
       vegGridRef.current = null;            // 切離開植被模式就清空
+      return;
+    }
+    // 一旦選中格子（sidebar 開啟中），就停止呼叫 for-map 批次端點
+    if (selectedCellId) {
+      vegGridRef.current = null;            // 清掉 for-map 暫存，著色回退到 GeoJSON 的後備值
+      applyLayerColorsRef.current?.();      // 重繪一次以反映狀態
       return;
     }
     let aborted = false;
@@ -407,7 +415,7 @@ export default function MapSection() {
       }
     })();
     return () => { aborted = true; };
-  }, [mode, month, veg]);
+  }, [mode, month, veg, selectedCellId]);
 
 
   /* --- 初始化地圖 --- */
@@ -578,10 +586,14 @@ export default function MapSection() {
       } else {
         const v01 = to01(veg).toFixed(2);
         for (const { c, r } of combos) {
-          urls.push(`${base}/NDVI/${mPadded}/${v01}/${c}+${r}`);
-          urls.push(`${base}/NDVI/${mPadded}/${v01}/${c}%2B${r}`);
-          urls.push(`${base}/NDVI/${mRaw}/${v01}/${c}+${r}`);
-          urls.push(`${base}/NDVI/${mRaw}/${v01}/${c}%2B${r}`);
+          // 固定月份 → 取 0~100% 覆蓋率整包（滑桿查表用）
+          urls.push(`${base}/NDVIbycoverage/${mPadded}/${c}+${r}`);
+          urls.push(`${base}/NDVIbycoverage/${mPadded}/${c}%2B${r}`);
+          urls.push(`${base}/NDVIbycoverage/${mRaw}/${c}+${r}`);
+          urls.push(`${base}/NDVIbycoverage/${mRaw}/${c}%2B${r}`);
+          // 固定覆蓋率 → 取 1~12 月整包（切月查表用）
+          urls.push(`${base}/NDVIbymonth/${v01}/${c}+${r}`);
+          urls.push(`${base}/NDVIbymonth/${v01}/${c}%2B${r}`);
         }
       }
     }
@@ -599,6 +611,7 @@ export default function MapSection() {
     }
 
     let aborted = false;
+    const controller = new AbortController();
     setApiLoading(true);
     setApiError(null);
     setTriedUrls(candidates);
@@ -607,10 +620,43 @@ export default function MapSection() {
       let lastErr: any = null;
       for (const url of candidates) {
         try {
-          const data = await fetchJSON<ClimatePayload>(url);
+          const raw = await fetchJSON<any>(url, { signal: controller.signal });
+          let data: ClimatePayload = raw;
+          // --- 新增：把「整包」轉成單點，沿用既有 UI 呈現 ---
+          if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+            const keys = Object.keys(raw);
+            // A) /NDVIbycoverage：鍵像 "0.0".."1.0"
+            if (keys.every(k => /^\d(\.\d)?$/.test(k))) {
+              const vKey = (to01(veg)).toFixed(1); // 0.0~1.0
+              const hit = raw[vKey];
+              if (hit && typeof hit === 'object') {
+                data = {
+                  metadata: { month, vegetation: Number(vKey) },
+                  predicted_temperatures: {
+                    current: hit.Temperature, high: hit.High_Temp, low: hit.Low_Temp
+                  }
+                };
+              }
+            }
+            // B) /NDVIbymonth：鍵像 "1".."12"
+            else if (keys.every(k => /^\d+$/.test(k))) {
+              const mKey = String(month);
+              const hit = raw[mKey];
+              if (hit && typeof hit === 'object') {
+                data = {
+                  metadata: { month, vegetation: to01(veg) },
+                  predicted_temperatures: {
+                    current: hit.Temperature, high: hit.High_Temp, low: hit.Low_Temp
+                  }
+                };
+              }
+            }
+          }
           if (!aborted) { setApiData(data); setApiError(null); }
           return;
         } catch (e: any) {
+          // 被中止的請求：直接結束，不更新任何狀態
+          if (controller.signal.aborted) return;
           lastErr = e;
           if (!(e instanceof NoDataError) && !String(e.message || '').includes('HTTP 404')) break;
         }
@@ -622,9 +668,12 @@ export default function MapSection() {
           setApiData(null); setApiError(lastErr?.message || '讀取失敗');
         }
       }
-    })().finally(() => { if (!aborted) setApiLoading(false); });
+    })().finally(() => { if (!aborted && !controller.signal.aborted) setApiLoading(false); });
 
-    return () => { aborted = true; };
+    return () => {
+      aborted = true;
+      controller.abort(); // 取消上一輪尚未完成的請求
+    };
   }, [mode, activeSlider, pastYear, futureYear, month, veg, rowId, colId]);
 
   // 修正：取得完整的溫度資料 (current, high, low)
@@ -658,12 +707,12 @@ export default function MapSection() {
     >
       {/* 標題層 - 使用 index.tsx 格式 */}
       <div className="sticky top-0 m-screen flex items-center justify-center ">
-        
-          <h2
-            className="font-mono text-text-primary tracking-wider text-center text-title01 leading-loose"
-          >
-            Heat Island Model
-          </h2>
+
+        <h2
+          className="font-mono text-text-primary tracking-wider text-center text-title01 leading-loose"
+        >
+          Heat Island Model
+        </h2>
       </div>
 
       {/* 模式切換 + 著色功能 */}
@@ -724,120 +773,120 @@ export default function MapSection() {
           </div>
         </div>
       </div>
-     {/* 溫度圖例 - 常駐顯示，只有類型模式時才被類型圖例取代 */}
-        {!enableAdvancedColor || colorMode === 'temperature' ? (
-          <div className="absolute top-1 left-4 z-[10]  rounded-lg px-3 py-3 text-white border border-gray-700">
-            <div className="flex flex-col gap-3">
-              <span className="font-bold text-l">溫度圖例 ({month}月)</span>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-temp-low"></div>
-                  <span className="text-caption01">低溫</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-temp-medium"></div>
-                  <span className="text-caption01">中低溫</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-temp-high"></div>
-                  <span className="text-caption01">中高溫</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-temp-extreme"></div>
-                  <span className="text-caption01">高溫</span>
-                </div>
+      {/* 溫度圖例 - 常駐顯示，只有類型模式時才被類型圖例取代 */}
+      {!enableAdvancedColor || colorMode === 'temperature' ? (
+        <div className="absolute top-1 left-4 z-[10]  rounded-lg px-3 py-3 text-white border border-gray-700">
+          <div className="flex flex-col gap-3">
+            <span className="font-bold text-l">溫度圖例 ({month}月)</span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-temp-low"></div>
+                <span className="text-caption01">低溫</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-temp-medium"></div>
+                <span className="text-caption01">中低溫</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-temp-high"></div>
+                <span className="text-caption01">中高溫</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-temp-extreme"></div>
+                <span className="text-caption01">高溫</span>
               </div>
             </div>
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {/* 類型圖例 - 只有開啟進階著色且為類型模式時顯示 */}
-        {enableAdvancedColor && colorMode === 'type' && (
-          <div className="absolute top-4 right-4 z-[15] bg-black/85 rounded-lg p-3 text-white border border-gray-700">
-            <div className="text-caption01 mb-2">類型</div>
-            <div className="flex gap-4 flex-wrap">
-              {(['mountain', 'coast', 'city', 'suburb'] as const).map(key => (
-                <div key={key} className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded" style={{ background: TYPE_COLORS[key] }} />
-                  <span className="text-caption01 capitalize">{key}</span>
-                </div>
-              ))}
-            </div>
+      {/* 類型圖例 - 只有開啟進階著色且為類型模式時顯示 */}
+      {enableAdvancedColor && colorMode === 'type' && (
+        <div className="absolute top-4 right-4 z-[15] bg-black/85 rounded-lg p-3 text-white border border-gray-700">
+          <div className="text-caption01 mb-2">類型</div>
+          <div className="flex gap-4 flex-wrap">
+            {(['mountain', 'coast', 'city', 'suburb'] as const).map(key => (
+              <div key={key} className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded" style={{ background: TYPE_COLORS[key] }} />
+                <span className="text-caption01 capitalize">{key}</span>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
+      )}
       {/* 地圖容器卡片 */}
-  <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden bg-image-custom" style={{ marginTop: '2rem' }}>
+      <div className="relative bg-black/50 backdrop-blur-sm rounded-3xl border border-gray-800 p-8 overflow-hidden bg-image-custom" style={{ marginTop: '2rem' }}>
 
-{/* 中間控制拉桿區域（修改後的佈局） */}
-<div className="absolute top-4 right-16 z-10 bg-blue-100/30 rounded-lg p-4 text-white-100  border-blue-300 max-md:relative max-md:right-auto max-md:mt-4 max-md:mx-4" style={{ width: '360px', minWidth: '360px' ,}}>
-  {mode === 'population' ? (
-    <div className="flex flex-col items-start gap-6 max-md:gap-3">
-      <div className="flex-col gap-4 max-md:w-full max-md:flex-col max-md:gap-2">
-        <span className="text-caption01 text-gray-100 font-bold whitespace-nowrap">植被覆蓋率</span>
-        <div className="flex-col gap-3 max-md:w-full max-md:justify-between">
-          <input type="range" min={0} max={100} step={10} value={veg}
-            onChange={(e) => setVeg(Number(e.target.value))}
-            className="w-56 h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer max-md:flex-1"
-            style={{ background: `linear-gradient(to right, #ffffff 0%, #A9E981 ${veg}%, #374151 ${veg}%, #374151 100%)` }} />
-          <span className="text-caption01 font-bold text-white min-w-[3rem]">{veg}%</span>
-        </div>
-      </div>
-      <div className="h-6 w-px bg-gray-600/70 max-md:h-px max-md:w-6" />
-      <div className="flex-col gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
-        <span className="text-caption01 text-gray-100 font-bold whitespace-nowrap">月份</span>
-         <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-          <input type="range" min={1} max={12} step={1} value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
-            style={{ background: `linear-gradient(to right, #ffffff 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
-          <span className="text-caption01 font-bold text-white min-w-[2rem]">{month}月</span>
-        </div>
-      </div>
-    </div>
-  ) : (
-    /* 修改後的時間模式佈局 - 將月份移到歷史/未來按鈕下方 */
-    <div className="flex flex-col items-start gap-4 max-md:gap-3">
-      {/* 歷史/未來按鈕組 */}
-      <div className="flex flex-col gap-3 max-md:w-full">
-        <div className="flex gap-2">
-          <button onClick={() => setActiveSlider('past')}
-            className={`px-2 py-1 text-caption01 rounded transition-all shadow-lg ${activeSlider === 'past' ? 'bg-blue-500  text-white shadow-blue-500/100' : 'text-gray-100 border border-gray-600 hover:text-white'}`}>歷史</button>
-          <button onClick={() => setActiveSlider('future')}
-            className={`px-2 py-1 text-caption01 rounded transition-all ${activeSlider === 'future' ? 'bg-green-700 text-white' : 'text-gray-100 border border-gray-600 hover:text-white'}`}>未來</button>
-        </div>
-        
-        {/* 年份控制 */}
-        <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-          <input type="range" min={activeSlider === 'past' ? 2013 : 2025} max={activeSlider === 'past' ? 2023 : 2035} step={1}
-            value={activeSlider === 'past' ? pastYear : futureYear}
-            onChange={(e) => { const v = Number(e.target.value); activeSlider === 'past' ? setPastYear(v) : setFutureYear(v); }}
-            className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
-            style={{
-              background: activeSlider === 'past'
-                ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((pastYear - 2013) / 10) * 100}%, #374151 ${((pastYear - 2013) / 10) * 100}%, #374151 100%)`
-                : `linear-gradient(to right, #a855f7 0%, #a855f7 ${((futureYear - 2025) / 10) * 100}%, #374151 ${((futureYear - 2025) / 10) * 100}%, #374151 100%)`
-            }} />
-          <span className={`text-caption01 font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-green-700'}`}>{activeSlider === 'past' ? pastYear : futureYear}年</span>
-        </div>
-      </div>
+        {/* 中間控制拉桿區域（修改後的佈局） */}
+        <div className="absolute top-4 right-16 z-10 bg-blue-100/30 rounded-lg p-4 text-white-100  border-blue-300 max-md:relative max-md:right-auto max-md:mt-4 max-md:mx-4" style={{ width: '360px', minWidth: '360px', }}>
+          {mode === 'population' ? (
+            <div className="flex flex-col items-start gap-6 max-md:gap-3">
+              <div className="flex-col gap-4 max-md:w-full max-md:flex-col max-md:gap-2">
+                <span className="text-caption01 text-gray-100 font-bold whitespace-nowrap">植被覆蓋率</span>
+                <div className="flex-col gap-3 max-md:w-full max-md:justify-between">
+                  <input type="range" min={0} max={100} step={10} value={veg}
+                    onChange={(e) => setVeg(Number(e.target.value))}
+                    className="w-56 h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+                    style={{ background: `linear-gradient(to right, #ffffff 0%, #A9E981 ${veg}%, #374151 ${veg}%, #374151 100%)` }} />
+                  <span className="text-caption01 font-bold text-white min-w-[3rem]">{veg}%</span>
+                </div>
+              </div>
+              <div className="h-6 w-px bg-gray-600/70 max-md:h-px max-md:w-6" />
+              <div className="flex-col gap-3 max-md:w-full max-md:flex-col max-md:gap-2">
+                <span className="text-caption01 text-gray-100 font-bold whitespace-nowrap">月份</span>
+                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+                  <input type="range" min={1} max={12} step={1} value={month}
+                    onChange={(e) => setMonth(Number(e.target.value))}
+                    className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+                    style={{ background: `linear-gradient(to right, #ffffff 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
+                  <span className="text-caption01 font-bold text-white min-w-[2rem]">{month}月</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* 修改後的時間模式佈局 - 將月份移到歷史/未來按鈕下方 */
+            <div className="flex flex-col items-start gap-4 max-md:gap-3">
+              {/* 歷史/未來按鈕組 */}
+              <div className="flex flex-col gap-3 max-md:w-full">
+                <div className="flex gap-2">
+                  <button onClick={() => setActiveSlider('past')}
+                    className={`px-2 py-1 text-caption01 rounded transition-all shadow-lg ${activeSlider === 'past' ? 'bg-blue-500  text-white shadow-blue-500/100' : 'text-gray-100 border border-gray-600 hover:text-white'}`}>歷史</button>
+                  <button onClick={() => setActiveSlider('future')}
+                    className={`px-2 py-1 text-caption01 rounded transition-all ${activeSlider === 'future' ? 'bg-green-700 text-white' : 'text-gray-100 border border-gray-600 hover:text-white'}`}>未來</button>
+                </div>
 
-      {/* 分隔線 */}
-      <div className="h-px w-full bg-gray-600/70" />
+                {/* 年份控制 */}
+                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+                  <input type="range" min={activeSlider === 'past' ? 2013 : 2025} max={activeSlider === 'past' ? 2023 : 2035} step={1}
+                    value={activeSlider === 'past' ? pastYear : futureYear}
+                    onChange={(e) => { const v = Number(e.target.value); activeSlider === 'past' ? setPastYear(v) : setFutureYear(v); }}
+                    className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+                    style={{
+                      background: activeSlider === 'past'
+                        ? `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((pastYear - 2013) / 10) * 100}%, #374151 ${((pastYear - 2013) / 10) * 100}%, #374151 100%)`
+                        : `linear-gradient(to right, #a855f7 0%, #a855f7 ${((futureYear - 2025) / 10) * 100}%, #374151 ${((futureYear - 2025) / 10) * 100}%, #374151 100%)`
+                    }} />
+                  <span className={`text-caption01 font-bold min-w-[3rem] ${activeSlider === 'past' ? 'text-blue-400' : 'text-green-700'}`}>{activeSlider === 'past' ? pastYear : futureYear}年</span>
+                </div>
+              </div>
 
-      {/* 月份控制 - 移到這裡 */}
-      <div className="flex flex-col gap-3 max-md:w-full">
-        <span className="text-m text-gray-100 whitespace-nowrap">月份</span>
-        <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-          <input type="range" min={1} max={12} step={1} value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
-            style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
-          <span className="text-caption01 font-bold text-white-400 min-w-[2rem]">{month}月</span>
+              {/* 分隔線 */}
+              <div className="h-px w-full bg-gray-600/70" />
+
+              {/* 月份控制 - 移到這裡 */}
+              <div className="flex flex-col gap-3 max-md:w-full">
+                <span className="text-m text-gray-100 whitespace-nowrap">月份</span>
+                <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+                  <input type="range" min={1} max={12} step={1} value={month}
+                    onChange={(e) => setMonth(Number(e.target.value))}
+                    className="w-56 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer max-md:flex-1"
+                    style={{ background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((month - 1) / 11) * 100}%, #374151 ${((month - 1) / 11) * 100}%, #374151 100%)` }} />
+                  <span className="text-caption01 font-bold text-white-400 min-w-[2rem]">{month}月</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-    </div>
-  )}
-</div>
 
         {/* 方案 1: 減少寬度和邊距，與儀表板保持距離 */}
         <div
