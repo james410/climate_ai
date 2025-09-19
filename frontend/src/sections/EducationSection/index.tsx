@@ -299,7 +299,7 @@ export default function EducationSection() {
       {/* 上層：滑鼠跟隨粒子背景 - 提供互動式粒子效果 */}
       <MouseFollowCanvasBackground />
 
-      <div className="max-w-4xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 60 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -318,7 +318,7 @@ export default function EducationSection() {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
             className="bg-white/0 backdrop-blur-lg rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
-          style={{ height: '80vh' }}
+          style={{ height: '90vh' }}
         >
           {/* 聊天機器人標題區 */}
             <div className="text-white p-6 text-center">
@@ -337,14 +337,79 @@ export default function EducationSection() {
           {/* 聊天訊息區 */}
           <div 
             ref={chatMessagesRef}
-            className="flex-1 p-6 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white/0 text-content01"
-            style={{ height: 'calc(100% - 200px)' }}
+            className="flex-1 p-6 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white/0 text-content01 relative"
+            style={{ height: 'calc(100% - 328px)' }}
           >
             {messages.map(message => renderMessage(message))}
           </div>
 
+          {/* 氣泡按鈕專用欄位 */}
+          <div className="h-32 px-6 py-6 border-t border-gray-200/20 bg-white/5 backdrop-blur-sm">
+            <div className="flex items-center justify-start space-x-3 overflow-x-auto">
+              {/* 按鈕1: 熱島效應是甚麼? */}
+              <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-6 py-5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 group whitespace-nowrap flex-shrink-0"
+                onClick={() => {
+                  setInputMessage('熱島效應是甚麼?');
+                  if (messageInputRef.current) {
+                    messageInputRef.current.focus();
+                  }
+                }}
+              >
+                <span className="text-white font-medium text-xl group-hover:text-blue-100 transition-colors duration-300">
+                  熱島效應是甚麼?
+                </span>
+              </motion.button>
+
+              {/* 按鈕2: 我可以如何解決熱島效應? */}
+              <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-6 py-5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 group whitespace-nowrap flex-shrink-0"
+                onClick={() => {
+                  setInputMessage('我可以如何解決熱島效應?');
+                  if (messageInputRef.current) {
+                    messageInputRef.current.focus();
+                  }
+                }}
+              >
+                <span className="text-white font-medium text-xl group-hover:text-blue-100 transition-colors duration-300">
+                  我可以如何解決熱島效應?
+                </span>
+              </motion.button>
+
+              {/* 按鈕3: 有推薦種植的植物來改善熱島效應嗎? */}
+              <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-6 py-5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 group whitespace-nowrap flex-shrink-0"
+                onClick={() => {
+                  setInputMessage('有推薦種植的植物來改善熱島效應嗎?');
+                  if (messageInputRef.current) {
+                    messageInputRef.current.focus();
+                  }
+                }}
+              >
+                <span className="text-white font-medium text-xl group-hover:text-blue-100 transition-colors duration-300">
+                  有推薦種植的植物來改善熱島效應嗎?
+                </span>
+              </motion.button>
+            </div>
+          </div>
+
           {/* 輸入區 */}
-          <div className="p-6 border-t border-gray-200/50 h-20">
+          <div className="p-6 border-t border-gray-200/50 h-100">
             <div className="flex space-x-3 mb-3">
               <input
                 ref={messageInputRef}

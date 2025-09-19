@@ -513,6 +513,99 @@ def get_ndvi_vegetation_data(month, colrow):
             }
 
         return jsonify(result)
+    
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@bp.route('/Apparent_Temperature/vegetation-comparison/<int:month>/<string:colrow>', methods=['GET'])
+def get_vegetation_comparison_data(month, colrow):
+    """
+    獲取指定月份和地點，在不同植被覆蓋率下的
+    Greening_Area_Ping 和 Apparent_Temperature 數據，用於動態比較。
+    路由格式: /api/vegetation-comparison/<month>/<column_id>+<row_id>
+    """
+    try:
+        # --- 1. 驗證和解析輸入參數 ---
+        if '+' not in colrow:
+            return jsonify({"error": "Invalid format, expected column_id+row_id 無效格式"}), 400
+
+        column_id_str, row_id_str = colrow.split('+', 1)
+        try:
+            column_id = int(column_id_str)
+            row_id = int(row_id_str)
+        except ValueError:
+            return jsonify({"error": "Invalid column_id or row_id format 無效的行列格式"}), 400
+
+        # --- 2. 核心資料庫查詢 ---
+        records = db.session.query(
+            NDVITemp.Vegetation_Coverage,
+            NDVITemp.Greening_Area_Ping,
+            NDVITemp.Apparent_Temperature
+        ).filter_by(
+            Month=month,
+            column_id=column_id,
+            row_id=row_id
+        ).order_by(NDVITemp.Vegetation_Coverage).all()
+
+        if not records:
+            return jsonify({"error": "Data not found 查無資料"}), 404
+
+        # --- 3. 格式化回傳的 JSON (修改後版本) ---
+        result_dict = {} # 初始化一個空字典
+        for veg, area, temp in records:
+            veg_key = str(round(float(veg), 2))
+            result_dict[veg_key] = {
+                "greening_area_ping": area,
+                "apparent_temperature": temp
+            }
+
+        return jsonify(result_dict)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@bp.route('/Apparent_Temperature/History_vegetation-comparison/<int:year>/<int:month>/<string:colrow>', methods=['GET'])
+def get_historical_datapoint(year, month, colrow):
+    """
+    獲取指定歷史年月和地點的 Greening_Area_Ping 和 Apparent_Temperature 數據。
+    路由格式: /Apparent_Temperature/History_vegetation-comparison/<year>/<month>/<column_id>+<row_id>
+    """
+    try:
+        # --- 1. 驗證和解析輸入參數 ---
+        if '+' not in colrow:
+            return jsonify({"error": "Invalid format, expected column_id+row_id 無效格式"}), 400
+
+        column_id_str, row_id_str = colrow.split('+', 1)
+        try:
+            column_id = int(column_id_str)
+            row_id = int(row_id_str)
+        except ValueError:
+            return jsonify({"error": "Invalid column_id or row_id format 無效的行列格式"}), 400
+
+        # --- 2. 核心資料庫查詢 (從 HistoryData 查詢) ---
+        # 根據年、月、地點進行精確查詢，只取第一筆結果
+        record = db.session.query(
+            HistoryData.Greening_Area_Ping,
+            HistoryData.Apparent_Temperature
+        ).filter_by(
+            Year=year,
+            Month=month,
+            column_id=column_id,
+            row_id=row_id
+        ).first()
+
+        if not record:
+            return jsonify({"error": "Data not found 查無資料"}), 404
+
+        # --- 3. 格式化回傳的 JSON ---
+        # 直接建立一個包含兩個欄位資訊的物件
+        result_dict = {
+            "greening_area_ping": record.Greening_Area_Ping,
+            "apparent_temperature": record.Apparent_Temperature
+        }
+
+        return jsonify(result_dict)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

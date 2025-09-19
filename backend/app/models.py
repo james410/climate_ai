@@ -56,6 +56,9 @@ class HistoryData(db.Model):
     Rain = db.Column(db.Float)
     Vegetation_Coverage = db.Column(db.Float)
     Water_Body_Coverage = db.Column(db.Float)
+    # 目標綠化面積（計算後可儲存）
+    Greening_Area_Ping = db.Column(db.Float, nullable=True)
+    Greening_Area_m2 = db.Column(db.Float, nullable=True)
     Apparent_Temperature = db.Column(db.Float)
     Apparent_Temperature_High = db.Column(db.Float)
     Apparent_Temperature_Low = db.Column(db.Float)
@@ -83,6 +86,9 @@ class NDVITemp(db.Model):
     column_id = db.Column(db.Integer, nullable=False)
     row_id = db.Column(db.Integer, nullable=False)
     Vegetation_Coverage = db.Column(db.Float)
+    # 目標綠化面積（計算後可儲存）
+    Greening_Area_Ping = db.Column(db.Float, nullable=True)
+    Greening_Area_m2 = db.Column(db.Float, nullable=True)
 
     Month = db.Column(db.SmallInteger)
 
