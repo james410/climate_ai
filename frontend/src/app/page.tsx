@@ -22,13 +22,23 @@ const MapSection = dynamic(
 export default function Home() {
   return (
     <>
-      <main className="relative z-20 scroll-smooth min-h-screen">
+      <main className="relative z-20 scroll-smooth min-h-screen scroll-container">
         <HeroSection />
-        <IntroSection />
-        <MapSection />
-        <DataSection />
-        <EducationSection />
-        <Footer />
+        <div className="scroll-section">
+          <IntroSection />
+        </div>
+        <div className="scroll-section">
+          <MapSection />
+        </div>
+        <div className="scroll-section">
+          <DataSection />
+        </div>
+        <div className="scroll-section">
+          <EducationSection />
+        </div>
+        <div className="scroll-section">
+          <Footer />
+        </div>
       </main>
     </>
   );

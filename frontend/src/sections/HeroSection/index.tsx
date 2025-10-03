@@ -66,12 +66,12 @@ const HeroSection = forwardRef<HTMLElement>((props, ref) => {
         }}
       />
       <h1
-        className="text-display font-mono font-bold text-text-primary mb-6 relative z-10 tracking-wider"
+        className="text-title01 font-mono font-bold text-text-primary mb-6 relative z-10 tracking-wider"
       >
         VERDISLE
       </h1>
       <p
-        className="font-mono text-subtitle01 text-text-secondary text-lg md:text-xl max-w-lg mb-10 text-center relative z-10 font-medium"
+        className="font-mono text-2xl text-text-secondary max-w-lg mb-10 text-center relative z-10 font-medium"
       >
         Islands of Heat, Cities of Change
       </p>

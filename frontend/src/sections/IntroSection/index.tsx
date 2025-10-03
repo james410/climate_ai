@@ -26,7 +26,7 @@ export default function Intro() {
           className="text-center max-w-4xl w-full"
         >
           <h2
-            className="font-chinese text-white text-subtitle01 leading-relaxed tracking-wider mb-8"
+            className="font-chinese text-white text-2xl leading-relaxed tracking-wider mb-8"
           >
             我們在城市裡行走，
             彷彿它不曾說話。<br />
@@ -34,11 +34,7 @@ export default function Intro() {
             都是它在回應我們的沉默。
           </h2>
           <p
-            className="font-mono text-text-secondary leading-relaxed tracking-wide"
-            style={{
-              fontSize: 'clamp(0.75rem,4vw,1.333rem)',
-              lineHeight: '1.4',
-            }}
+            className="font-mono text-text-secondary leading-relaxed tracking-wide text-lg"
           >
             We walk through the city as if it were silent.<br />
             But every heatwave, every sudden rain —<br />
@@ -58,17 +54,13 @@ export default function Intro() {
           className="text-center max-w-4xl w-full"
         >
           <h2
-            className="font-chinese text-white text-subtitle01 leading-relaxed tracking-wider mb-8"
+            className="font-chinese text-white text-2xl leading-relaxed tracking-wider mb-8"
           >
             你願意，聽聽它過去的記憶，<br />
             和我們能共同寫下的未來嗎？
           </h2>
           <p
-            className="font-mono text-text-secondary leading-relaxed tracking-wide"
-            style={{
-              fontSize: 'clamp(0.75rem,4vw,1.333rem)',
-              lineHeight: '1.4',
-            }}
+            className="font-mono text-text-secondary leading-relaxed tracking-wide text-lg"
           >
             Would you listen to what it remembers,<br />
             and what we might shape together?

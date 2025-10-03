@@ -36,10 +36,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         className={buttonVariants({ variant, size, className })}
-        style={{
-          fontFamily: "'DroidSansMono', monospace",
-          letterSpacing: '1.2px'
-        }}
         ref={ref}
         {...props}
       />
