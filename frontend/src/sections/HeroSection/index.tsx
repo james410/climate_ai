@@ -1,7 +1,6 @@
 'use client';
 import { forwardRef } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '../../ui/Button';
 import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 
 function CustomGradient() {
@@ -75,16 +74,46 @@ const HeroSection = forwardRef<HTMLElement>((props, ref) => {
       >
         Islands of Heat, Cities of Change
       </p>
-      <motion.div
-        onClick={scrollToIntro}
-        className="relative z-10"
-        animate={{ y: [0, 6, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        <Button className="font-mono text-text-primary hover:text-primary transition text-sm md:text-base font-medium tracking-wide">
-          Enter ↓
-        </Button>
-      </motion.div>
+      {/* 向下滾動提示箭頭 */}
+      <div className="relative z-10">
+        <motion.div
+          className="flex flex-col items-center gap-3"
+          animate={{ y: [0, 6, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          {/* 箭頭按鈕 */}
+          <motion.div
+            className="w-24 h-24 flex items-center justify-center cursor-pointer"
+            animate={{
+              y: [-8, 8, -8],
+            }}
+            transition={{
+              duration: 2.5,
+              ease: "easeInOut",
+              repeat: Infinity,
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={scrollToIntro}
+          >
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="text-white/90 drop-shadow-lg"
+            >
+              <path
+                d="M7 10L12 15L17 10"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </motion.div>
+        </motion.div>
+      </div>
     </section>
   );
 });

@@ -1050,46 +1050,68 @@ export default function MapSection() {
         </div>
       </div>
 
-      {/* 向下滾動提示箭頭 - 右下角 */}
-      <div className="fixed bottom-8 right-8 z-40 pointer-events-auto">
-        <motion.div
-          className="w-12 h-12 flex items-center justify-center cursor-pointer"
-          animate={{
-            y: [-8, 8, -8],
-          }}
-          transition={{
-            duration: 2,
-            ease: "easeInOut",
-            repeat: Infinity,
-          }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            const dataSection = document.getElementById('data-section') || document.querySelector('[data-section="data"]');
-            if (dataSection) {
-              dataSection.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-              });
-            }
-          }}
-        >
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="text-white/60 drop-shadow-lg"
+      {/* 向下滾動提示箭頭 - 右側中央 */}
+      <div className="absolute bottom-[10%] right-[10%] z-40 pointer-events-auto">
+        <div className="flex flex-col items-center gap-2">
+          {/* 提示文字 */}
+          <motion.div
+            className="text-white/80 text-base font-medium text-center"
+            animate={{
+              opacity: [0.5, 1, 0.5],
+            }}
+            transition={{
+              duration: 2,
+              ease: "easeInOut",
+              repeat: Infinity,
+            }}
           >
-            <path
-              d="M7 10L12 15L17 10"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </motion.div>
+            <div className="bg-black/40 backdrop-blur-sm rounded-lg px-3 py-2">
+              Scroll Down
+              <br />
+              <span className="text-sm text-white/60">Click to continue</span>
+            </div>
+          </motion.div>
+
+          {/* 箭頭按鈕 */}
+          <motion.div
+            className="w-28 h-28 flex items-center justify-center cursor-pointer"
+            animate={{
+              y: [-15, 15, -15],
+            }}
+            transition={{
+              duration: 2.5,
+              ease: "easeInOut",
+              repeat: Infinity,
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              const dataSection = document.getElementById('data-section') || document.querySelector('[data-section="data"]');
+              if (dataSection) {
+                dataSection.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start'
+                });
+              }
+            }}
+          >
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="text-white/80 drop-shadow-lg"
+            >
+              <path
+                d="M7 10L12 15L17 10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </motion.div>
+        </div>
       </div>
 
       <style jsx>{`
