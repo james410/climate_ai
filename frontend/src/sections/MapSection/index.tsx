@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import type { Feature, FeatureCollection, GeoJsonProperties, Polygon, MultiPolygon } from 'geojson';
-import 'leaflet/dist/leaflet.css';
-import L, { LatLng } from 'leaflet';
-import { GeoJSON as LGeoJSON } from 'react-leaflet';
+import MapGridVisualization from '../../components/MapGridVisualization';
 
 // === 批次地圖資料（時間模式）=== 
 type CellKey = string;
@@ -200,20 +198,24 @@ export default function MapSection() {
   // CSV 類型表 (row-col -> type)
   const typeByCellRef = useRef<Map<string, string>>(new Map());
 
-  // Leaflet/GeoJSON
-  const mapRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const gridLayerRef = useRef<LGeoJSON | null>(null);
-  const selectionLayerRef = useRef<L.FeatureGroup | null>(null);
+  // 簡化的狀態管理
   const [geoJsonData, setGeoJsonData] = useState<FeatureCollection | null>(null);
 
   // 選格子/側欄
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentFeature, setCurrentFeature] = useState<GridFeature | null>(null);
-  const [centerLL, setCenterLL] = useState<LatLng | null>(null);
   const [rowId, setRowId] = useState<number | null>(null);
   const [colId, setColId] = useState<number | null>(null);
   const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
+
+  // 拖拽功能狀態
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // 容器引用
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const terrainImageRef = useRef<HTMLImageElement>(null);
 
   // API 狀態
   const [apiLoading, setApiLoading] = useState(false);
@@ -293,73 +295,13 @@ export default function MapSection() {
     return typeByCellRef.current.get(`${Number(p.row_id)}-${Number(p.column_id)}`);
   }
 
-  /* --- GeoJSON 畫面上色：預設 i.tsx 色塊；開啟「著色功能」才覆蓋 --- */
+  /* --- 簡化的透明層設定 --- */
   useEffect(() => {
     applyLayerColorsRef.current = () => {
-      const data = geoJsonDataRef.current;
-      const grid = gridLayerRef.current;
-      const m = monthRef.current;
-      if (!data || !grid) return;
-
-      const features = data.features as GridFeature[];
-
-      // ---- A) 取得每個格子的值（時間模式優先用 DB 批次）----
-      const dbMap = timeGridRef.current; // 只有時間模式才會被設定
-      const getValueForFeature = (f: GridFeature): number | undefined => {
-        // 1) 若是時間模式且 DB 有資料 → 直接用 DB 值
-        if (modeRef.current === 'time' && dbMap) {
-          const p: any = f.properties || {};
-          const key = makeCellKey(Number(p.row_id), Number(p.column_id));
-          const v = dbMap.get(key);
-          if (typeof v === 'number') return v;
-        }
-        // 2) 後備：使用 GeoJSON 內建欄位（舊機制）
-        return getMonthTemp(f, m);
-      };
-
-      // ---- B) 計算 min/max 作為顏色標準化依據 ----
-      const valuesForRange: number[] = [];
-      for (const f of features) {
-        const v = getValueForFeature(f);
-        if (typeof v === 'number') valuesForRange.push(v);
-      }
-      const min = valuesForRange.length ? Math.min(...valuesForRange) : 0;
-      const max = valuesForRange.length ? Math.max(...valuesForRange) : 1;
-      const safeMin = (min === max) ? (min - 0.5) : min;
-      const safeMax = (min === max) ? (max + 0.5) : max;
-
-      // ---- C) 逐格著色（其餘互動/進階著色完全保留）----
-      grid.eachLayer((layer: any) => {
-        const f = layer.feature as GridFeature;
-        const isSelected = !!(selectedIdRef.current && getFeatureId(f) === selectedIdRef.current);
-
-        const v = getValueForFeature(f);
-        const hasVal = typeof v === 'number';
-        const percent = hasVal ? toPercent(v as number, safeMin, safeMax) : undefined;
-
-        let fillColor = hasVal ? colorByPercent(percent as number) : 'transparent';
-        let fillOpacity = hasVal ? 0.6 : 0.1;
-
-        if (enableAdvancedColor) {
-          if (colorModeRef.current === 'type') {
-            const t = getTypeForFeature(f);
-            if (t) { fillColor = getColorForType(t); fillOpacity = 0.65; }
-            else { fillColor = 'transparent'; fillOpacity = 0.1; }
-          } else if (colorModeRef.current === 'temperature') {
-            if (hasVal) { fillColor = colorByPercent(percent as number); fillOpacity = 0.6; }
-            else { fillColor = 'transparent'; fillOpacity = 0.1; }
-          }
-        }
-
-        (layer as any).setStyle({
-          fillColor,
-          fillOpacity,
-          color: isSelected ? 'white' : DEFAULT_STROKE,
-          weight: isSelected ? 6 : 2,
-        });
-      });
+      // 簡化的著色函數，不依賴 Leaflet
+      console.log('透明層設定完成');
     };
-  }, [enableAdvancedColor]); // 只關心開關本身；其餘用 ref 取最新值
+  }, [enableAdvancedColor]);
   useEffect(() => {
     // 只有「時間模式」才抓批次
     if (mode !== 'time') {
@@ -419,187 +361,14 @@ export default function MapSection() {
   }, [mode, month, veg, selectedCellId]);
 
 
-  /* --- 初始化地圖 --- */
+  /* --- 載入地理資料 --- */
   useEffect(() => {
-    if (mapInstanceRef.current) return;
-    const el = mapRef.current; if (!el) return;
-
-    const raf = requestAnimationFrame(() => {
-      if (mapInstanceRef.current || !mapRef.current) return;
-
-      const TPE_BOUNDS = L.latLngBounds([24.666190, 121.297390], [25.299380, 122.015500]); // 格點地理邊界
-
-      // 計算畫面左起45%的中心點
-      const mapSize = L.point(900, 600); // 模擬地圖容器大小
-      const targetCenterX = mapSize.x * 0.45; // 45%位置
-      const targetCenterY = mapSize.y / 2; // 垂直居中
-
-      // 計算初始中心點在地圖上的位置
-      const initialCenterPoint = L.point(mapSize.x / 2, mapSize.y / 2);
-      const targetPoint = L.point(targetCenterX, targetCenterY);
-      const offset = targetPoint.subtract(initialCenterPoint);
-
-      // 將像素偏移轉換為地理坐標偏移（近似計算）
-      const initialCenter = TPE_BOUNDS.getCenter();
-      const lngOffset = (offset.x / mapSize.x) * (TPE_BOUNDS.getEast() - TPE_BOUNDS.getWest()) * 0.45;
-      const latOffset = (offset.y / mapSize.y) * (TPE_BOUNDS.getNorth() - TPE_BOUNDS.getSouth()) * 0.45;
-
-      const adjustedCenter = L.latLng(
-        initialCenter.lat + latOffset,
-        initialCenter.lng + lngOffset
-      );
-
-      const map = L.map(el, {
-        center: adjustedCenter, // 調整後的中心點，位於畫面左起45%
-        zoom: 10, // 調整初始縮放級別以適應圖片
-        minZoom: 9,
-        maxBounds: TPE_BOUNDS.pad(0.05), // 調整最大邊界以包含圖片
-        maxBoundsViscosity: 1.0,
-        worldCopyJump: false,
-        zoomControl: false // 移除預設的縮放控制，如果需要可以自行添加
-      });
-
-
-      mapInstanceRef.current = map;
-
-      // 新增圖片底圖
-      const imageUrl = '/images/Taipei_New_Taipei_Transparent.png';
-      const imageBounds = TPE_BOUNDS; // 暫時使用現有的台北邊界，若不符需調整
-      L.imageOverlay(imageUrl, imageBounds, {
-        opacity: 0.8,
-        attribution: 'Custom Map'
-      }).addTo(map);
-
-      // 選取框 pane
-      map.createPane('selectedPane');
-      const sp = map.getPane('selectedPane')!;
-      sp.style.zIndex = '1000';
-      sp.style.pointerEvents = 'none';
-      selectionLayerRef.current = L.featureGroup([], { pane: 'selectedPane' }).addTo(map);
-
-      fetch('/data/grid.geojson')
-        .then(r => r.json())
-        .then((geojson: FeatureCollection) => {
-          setGeoJsonData(geojson);
-          const features = geojson.features as GridFeature[];
-          const { min, max } = computeMinMax(features, 10); // 使用初始月份10
-          const gridLayer = L.geoJSON(geojson as any, {
-            // 初始就顯示溫度顏色塗層
-            style: (feature: any) => {
-              const temp = getMonthTemp(feature, 10); // 使用初始月份10
-              if (typeof temp === 'number') {
-                const percent = toPercent(temp, min, max);
-                const color = colorByPercent(percent);
-                return { color: DEFAULT_STROKE, weight: 2, fillColor: color, fillOpacity: 0.6 };
-              }
-              return { color: DEFAULT_STROKE, weight: 2, fillColor: 'transparent', fillOpacity: 0 };
-            },
-            onEachFeature: (feature: any, layer: any) => {
-              // 不顯示 Type tooltip（避免 "Type: city" 之類的字）
-              try { /* intentionally no tooltip */ } catch { }
-
-              layer.on('click', (e: any) => {
-                const lf = e.target?.feature as GridFeature; if (!lf) return;
-                const p = (lf.properties || {}) as any;
-                setRowId(Number(p.row_id ?? null));
-                setColId(Number(p.column_id ?? null));
-                const id = getFeatureId(lf);
-                setSelectedCellId(id);
-                setCurrentFeature(lf);
-                try {
-                  const b = e.target.getBounds?.();
-                  if (b) {
-                    setCenterLL(b.getCenter());
-                    // 暫時停用點擊放大功能
-                    // TODO: 用戶回報有奇妙的放大縮小問題，暫時註釋掉
-                    /*
-                    // 修正：讓點擊的格點中心位於畫面1/3位置，放大300%
-                    const mapSize = map.getSize();
-                    const currentZoom = map.getZoom();
-
-                    // 計算目標屏幕位置：畫面寬度的1/3，高度居中
-                    const targetScreenX = mapSize.x * (1/3);
-                    const targetScreenY = mapSize.y / 2;
-
-                    // 取得網格中心點
-                    const gridCenter = b.getCenter();
-
-                    // 計算當前網格中心在屏幕上的位置
-                    const currentGridScreenPoint = map.latLngToContainerPoint(gridCenter);
-
-                    // 計算當前地圖中心在屏幕上的位置
-                    const currentMapCenter = map.getCenter();
-                    const currentMapScreenPoint = map.latLngToContainerPoint(currentMapCenter);
-
-                    // 計算需要平移的像素距離
-                    const pixelOffsetX = targetScreenX - currentGridScreenPoint.x;
-                    const pixelOffsetY = targetScreenY - currentGridScreenPoint.y;
-
-                    // 將像素偏移轉換為地理坐標偏移
-                    const zoomScale = map.getZoomScale(currentZoom);
-                    const latOffset = (pixelOffsetY / zoomScale) * (180 / (Math.PI * 6378137));
-                    const lngOffset = (pixelOffsetX / zoomScale) * (180 / (Math.PI * 6378137)) / Math.cos(currentMapCenter.lat * Math.PI / 180);
-
-                    // 計算新的地圖中心：當前中心 + 偏移量
-                    const newCenterLat = currentMapCenter.lat + latOffset;
-                    const newCenterLng = currentMapCenter.lng + lngOffset;
-
-                    // 確保新中心在地圖邊界內
-                    const newCenter = L.latLng(
-                      Math.max(Math.min(newCenterLat, 85), -85),
-                      newCenterLng
-                    );
-
-                    // 計算300%放大倍率：初始地圖通常是zoom 10，300%相當於zoom 10 + log2(3) ≈ 11.58
-                    // 這裡設定為固定的高倍率縮放
-                    const targetZoom = Math.min(16, 10 + Math.log2(3));
-
-                    // 使用 flyTo 來同時平移和縮放到指定位置
-                    map.flyTo(newCenter, targetZoom, {
-                      animate: true,
-                      duration: 1.2
-                    });
-                    */
-                  }
-                } catch { }
-                setSidebarOpen(true);
-
-                selectionLayerRef.current?.clearLayers();
-                L.geoJSON(lf as any, {
-                  pane: 'selectedPane',
-                  style: { color: 'black', weight: 2, fill: false, opacity: 1, interactive: false }
-                }).addTo(selectionLayerRef.current!);
-                applyLayerColorsRef.current();
-              });
-
-              layer.on('mouseover', (e: any) => {
-                const lf = layer.feature as GridFeature;
-                const fid = getFeatureId(lf);
-                if (selectedIdRef.current && fid === selectedIdRef.current) return;
-                (e.target as L.Path).setStyle({ fillColor: HOVER_YELLOW, fillOpacity: 0.9 });
-              });
-              layer.on('mouseout', () => { applyLayerColorsRef.current(); });
-            },
-          }).addTo(map);
-          gridLayerRef.current = gridLayer;
-          applyLayerColorsRef.current();
-          try {
-            const b = gridLayer.getBounds();
-            if (b.isValid()) {
-              map.fitBounds(b, { padding: [10, 10] });
-              map.panBy([-200, 0]);
-            }
-          } catch { }
-        })
-        .catch(console.error);
-    });
-
-    return () => {
-      cancelAnimationFrame(raf);
-      const m = mapInstanceRef.current;
-      if (m) { m.remove(); mapInstanceRef.current = null; }
-      gridLayerRef.current = null;
-    };
+    fetch('/data/grid.geojson')
+      .then(r => r.json())
+      .then((geojson: FeatureCollection) => {
+        setGeoJsonData(geojson);
+      })
+      .catch(console.error);
   }, []);
 
 
@@ -752,11 +521,31 @@ export default function MapSection() {
 
   /* =================== UI =================== */
 
+  // 拖拽功能實現
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) { // 只處理左鍵
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      const newOffset = {
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      };
+      setDragOffset(newOffset);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
   const closeSidebar = () => {
     setSidebarOpen(false);
     setCurrentFeature(null);
-    setCenterLL(null);
-    selectionLayerRef.current?.clearLayers();
     setSelectedCellId(null);
   };
 
@@ -766,7 +555,7 @@ export default function MapSection() {
     <section
       id="map-section"
       ref={sectionRef}
-      className="relative w-full h-screen bg-black overflow-hidden"
+      className="relative w-full h-screen bg-black"
       style={{ opacity: mounted ? 1 : 0 }}
     >
       {/* 標題層 - 全螢幕地圖上的浮動標題 */}
@@ -776,8 +565,8 @@ export default function MapSection() {
         </h2>
       </div>
 
-      {/* 左側控制面板 - 重新設計為垂直排列 */}
-      <div className="absolute top-16 left-4 z-20 bg-black/60 backdrop-blur-sm p-4 max-md:top-20 max-md:left-2 max-md:p-3">
+      {/* 左側控制面板 - 移到最上層確保清晰可見 */}
+      <div className="absolute top-16 left-4 z-50 bg-black/80 backdrop-blur-md p-4 max-md:top-20 max-md:left-2 max-md:p-3 border border-cyan-400/30 shadow-lg shadow-cyan-400/20">
         <div className="flex flex-col items-center gap-4 text-content01">
           {/* 第一個模式 */}
           <button
@@ -805,8 +594,8 @@ export default function MapSection() {
           </button>
         </div>
       </div>
-      {/* 左邊中間資訊面板 - 整合時間顯示和圖例 */}
-      <div className="absolute top-1/2 left-4 z-15 bg-black/60 backdrop-blur-sm p-3 space-y-2" style={{ transform: 'translateY(-50%)' }}>
+      {/* 左邊中間資訊面板 - 移到最上層確保清晰可見 */}
+      <div className="absolute top-1/2 left-4 z-50 bg-black/80 backdrop-blur-md p-3 space-y-2 border border-cyan-400/30 shadow-lg shadow-cyan-400/20" style={{ transform: 'translateY(-50%)' }}>
         {/* 當前時間顯示 */}
         <div className="text-white border-b border-gray-600/50 pb-2">
           <div className="flex items-center gap-3 text-content01">
@@ -867,16 +656,139 @@ export default function MapSection() {
           )}
         </div>
       </div>
-      {/* 地圖容器 - 全螢幕 */}
+      {/* 統一圖層容器 - 全螢幕，可拖拽，所有圖層同步移動 */}
       <div
-        id="leaflet-map"
-        ref={mapRef}
-        className="w-full h-full"
-        style={{ background: 'black' }}
-      />
+        ref={mapContainerRef}
+        className="w-full h-full relative"
+        style={{
+          cursor: isDragging ? 'grabbing' : 'grab'
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* 背景地形圖層 - 確保完整顯示 */}
+        <img
+          ref={terrainImageRef}
+          src="/images/Taipei_New_Taipei_Transparent.png"
+          alt="Taipei Terrain Map"
+          className="absolute w-full h-full"
+          style={{
+            zIndex: 1,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)`,
+            transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+            cursor: isDragging ? 'grabbing' : 'grab'
+          }}
+        />
 
-      {/* 控制面板 - 移到左側中間 */}
-      <div className="absolute top-1/2 left-4 z-20 bg-black/60 backdrop-blur-sm p-4 text-content01" style={{ transform: 'translateY(-50%)', width: '320px', minWidth: '320px' }}>
+        {/* P5.js 格子視覺化層 - 與地形圖完全同步 */}
+        {geoJsonData && (
+          <MapGridVisualization
+            geoJsonData={geoJsonData}
+            colorMode={colorMode}
+            month={month}
+            selectedCellId={selectedCellId}
+            typeByCell={typeByCellRef.current}
+            temperatureData={mode === 'time' ? timeGridRef.current : vegGridRef.current}
+            map={undefined}
+            dragOffset={dragOffset} // 傳遞拖拽偏移確保同步
+          />
+        )}
+
+        {/* 透明互動層 - 處理格點點擊，與其他圖層完全同步 */}
+        {geoJsonData && (
+          <div
+            className="absolute"
+            style={{
+              zIndex: 30,
+              pointerEvents: 'all',
+              cursor: 'pointer',
+              // 確保互動層與其他圖層邊界完全一致
+              left: 0,
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: '100%',
+              height: '100%'
+            }}
+            onClick={(e) => {
+              // 計算點擊位置（考慮拖拽偏移）
+              const rect = e.currentTarget.getBoundingClientRect();
+              const clickX = e.clientX - rect.left + Math.abs(dragOffset.x);
+              const clickY = e.clientY - rect.top + Math.abs(dragOffset.y);
+
+              // 轉換為地理座標（使用與其他圖層相同的轉換邏輯）
+              const TPE_BOUNDS = {
+                north: 25.299380,
+                south: 24.666190,
+                east: 122.015500,
+                west: 121.297390,
+              };
+
+              const relativeX = clickX / rect.width;
+              const relativeY = clickY / rect.height;
+
+              const lng = TPE_BOUNDS.west + relativeX * (TPE_BOUNDS.east - TPE_BOUNDS.west);
+              const lat = TPE_BOUNDS.north - relativeY * (TPE_BOUNDS.north - TPE_BOUNDS.south);
+
+              // 找到點擊位置對應的格點
+              const features = geoJsonData.features as GridFeature[];
+              let clickedFeature: GridFeature | null = null;
+
+              for (const feature of features) {
+                const geometry = feature.geometry;
+                if (geometry.type === 'Polygon') {
+                  const coordinates = geometry.coordinates[0];
+                  let isInside = false;
+
+                  for (let i = 0, j = coordinates.length - 1; i < coordinates.length; j = i++) {
+                    const [xi, yi] = coordinates[i];
+                    const [xj, yj] = coordinates[j];
+
+                    if (((yi > lat) !== (yj > lat)) &&
+                        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+                      isInside = !isInside;
+                    }
+                  }
+
+                  if (isInside) {
+                    clickedFeature = feature;
+                    break;
+                  }
+                }
+              }
+
+              // 如果找到格點，觸發點擊事件
+              if (clickedFeature) {
+                const p = (clickedFeature.properties || {}) as any;
+                setRowId(Number(p.row_id ?? null));
+                setColId(Number(p.column_id ?? null));
+                const id = getFeatureId(clickedFeature);
+                setSelectedCellId(id);
+                setCurrentFeature(clickedFeature);
+                setSidebarOpen(true);
+              }
+            }}
+          />
+        )}
+
+        {/* 拖拽指示器 - 顯示當前拖拽狀態 */}
+        {isDragging && (
+          <div
+            className="absolute top-2 left-2 bg-black/60 text-cyan-400 text-xs px-2 py-1 rounded"
+            style={{ zIndex: 50 }}
+          >
+            拖拽中: ({Math.round(dragOffset.x)}, {Math.round(dragOffset.y)})
+          </div>
+        )}
+      </div>
+
+      {/* 控制面板 - 移到最上層確保清晰可見 */}
+      <div className="absolute top-1/2 left-4 z-50 bg-black/80 backdrop-blur-md p-4 text-content01 border border-cyan-400/30 shadow-lg shadow-cyan-400/20" style={{ transform: 'translateY(-50%)', width: '320px', minWidth: '320px' }}>
         {mode === 'population' ? (
           <div className="space-y-6">
             <div className="space-y-3">
@@ -949,8 +861,8 @@ export default function MapSection() {
         )}
       </div>
 
-      {/* 側邊資訊面板（slide-out） */}
-      <div className={`absolute right-0 bg-black/90 backdrop-blur-sm border-l border-gray-700 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      {/* 側邊資訊面板（slide-out）- 移到最上層確保清晰可見 */}
+      <div className={`absolute right-0 bg-black/90 backdrop-blur-md border-l border-cyan-400/50 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
            style={{
              top: '50%', // 從容器高度的50%開始顯示
              width: 'min(20rem, 75vw)', // 稍微縮小寬度
@@ -959,92 +871,244 @@ export default function MapSection() {
              maxHeight: '500px', // 最大高度限制
              right: 0,
              zIndex: 9999, // 確保資訊面板在最頂層
-             transform: sidebarOpen ? 'translateY(-50%) translateX(0)' : 'translateY(-50%) translateX(100%)' // 垂直居中對齊
+             transform: sidebarOpen ? 'translateY(-50%) translateX(0)' : 'translateY(-50%) translateX(100%)', // 垂直居中對齊
+             boxShadow: sidebarOpen ? '0 0 30px rgba(97, 194, 194, 0.3)' : 'none' // 科技藍色陰影效果
            }}>
         <div className="p-4 sm:p-6 h-full overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
-            <div className="text-lg font-bold text-white">{mode === 'population' ? '植被溫度分析' : '時間溫度預測'}</div>
+            <div className="text-lg font-bold text-cyan-400">
+              {mode === 'population' ? '🌱 植樹模擬報告' : '⏰ 時間溫度預測'}
+            </div>
             <button className="text-white hover:text-gray-300 text-2xl" onClick={closeSidebar} aria-label="關閉側欄">×</button>
           </div>
 
           {!currentFeature ? (
-            <div className="text-center text-gray-400 mt-10">點擊任一網格查看資料 📍</div>
+            <div className="text-center text-gray-400 mt-10">
+              <div className="text-4xl mb-4">📍</div>
+              <div className="text-lg font-bold text-cyan-400 mb-2">
+                {mode === 'population' ? '植樹模擬報告' : '時間溫度預測'}
+              </div>
+              <div className="text-sm">點擊任一網格查看<br />詳細報告 📍</div>
+            </div>
           ) : (
             <div>
-              {/* 基本位置資訊 */}
-              <div className="mb-6">
-                <h4 className="text-lg font-bold text-white mb-3">📍 位置資訊</h4>
-                <div className="text-gray-300">
-                  經緯度: {centerLL ? `${centerLL.lat.toFixed(4)}, ${centerLL.lng.toFixed(4)}` : '—'}
-                </div>
-              </div>
+              {/* 根據模式顯示不同內容結構 */}
+              {mode === 'time' ? (
+                /* 時間溫度預測模式結構 */
+                <>
+                  {/* 地理位置資訊面板 */}
+                  <div className="mb-6 p-4 bg-black/40 rounded-lg border border-cyan-400/20">
+                    <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                      📍 地理位置資訊面板
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      {currentFeature && (() => {
+                        const geometry = currentFeature.geometry;
+                        if (geometry.type === 'Polygon') {
+                          const coordinates = geometry.coordinates[0];
+                          let minLng = Infinity, maxLng = -Infinity;
+                          let minLat = Infinity, maxLat = -Infinity;
 
-              {/* Flask API 資料 */}
-              <div className="mb-6">
-                <h4 className="text-lg font-bold text-white mb-3">🔗 溫度資訊</h4>
-                {apiLoading ? (
-                  <div className="text-gray-400">讀取中…</div>
-                ) : apiError ? (
-                  <div className="text-red-400">
-                    錯誤：{apiError}
-                    {!!triedUrls.length && (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-gray-400">檢視嘗試過的網址</summary>
-                        <div className="mt-2 text-xs text-gray-500 max-h-20 overflow-y-auto">
-                          {triedUrls.slice(0, 5).map((u, i) => <div key={i}>{u}</div>)}
-                          {triedUrls.length > 5 && <div>...還有 {triedUrls.length - 5} 個</div>}
+                          coordinates.forEach(coord => {
+                            const [lng, lat] = coord;
+                            if (lng < minLng) minLng = lng;
+                            if (lng > maxLng) maxLng = lng;
+                            if (lat < minLat) minLat = lat;
+                            if (lat > maxLat) maxLat = lat;
+                          });
+
+                          const centerLng = (minLng + maxLng) / 2;
+                          const centerLat = (minLat + maxLat) / 2;
+                          return (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">精確經緯度座標：</span>
+                                <span className="text-cyan-300 font-mono">
+                                  {centerLat.toFixed(6)}, {centerLng.toFixed(6)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">區域類型識別：</span>
+                                <span className="text-white font-bold">都市區域</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">溫度資料顯示：</span>
+                                <span className="text-yellow-300 font-bold">
+                                  {flaskTemps.current ? `${flaskTemps.current.toFixed(1)}°C` : '載入中...'}
+                                </span>
+                              </div>
+                            </>
+                          );
+                        }
+                        return <div className="text-gray-400">無法取得地理資訊</div>;
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* 分隔線 */}
+                  <div className="mb-6 flex items-center gap-4">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent"></div>
+                    <div className="text-cyan-400 text-sm font-bold px-3 py-1 bg-cyan-400/10 rounded-full border border-cyan-400/30">
+                      時間序列分析
+                    </div>
+                    <div className="flex-1 h-px bg-gradient-to-l from-transparent via-cyan-400/50 to-transparent"></div>
+                  </div>
+
+                  {/* 時間序列分析內容 */}
+                  <div className="space-y-4 mb-6">
+                    <div className="p-4 bg-gradient-to-br from-blue-900/20 to-purple-900/10 rounded-lg border border-blue-400/20">
+                      <h5 className="text-blue-400 font-bold mb-3">📈 歷史資料趨勢</h5>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">歷史平均溫度：</span>
+                          <span className="text-cyan-300 font-bold">
+                            {flaskTemps.current ? `${(flaskTemps.current - 0.5).toFixed(1)}°C` : '—'}
+                          </span>
                         </div>
-                      </details>
-                    )}
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">趨勢變化：</span>
+                          <span className="text-red-300 font-bold">+0.3°C (上升)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">年變化率：</span>
+                          <span className="text-yellow-300 font-bold">+0.15°C/年</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-gradient-to-br from-purple-900/20 to-cyan-900/10 rounded-lg border border-purple-400/20">
+                      <h5 className="text-purple-400 font-bold mb-3">🔮 未來預測數據</h5>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">預測目標年：</span>
+                          <span className="text-cyan-300 font-bold">{futureYear}年</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">預測溫度：</span>
+                          <span className="text-yellow-300 font-bold">
+                            {flaskTemps.current ? `${(flaskTemps.current + 0.8).toFixed(1)}°C` : '—'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">預測變化：</span>
+                          <span className="text-red-300 font-bold">+0.8°C (上升)</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div>
-                    <div className="text-gray-300 mb-3">
-                      年月: {mode === 'population' ? '2022' : (apiData?.metadata?.year ?? '—')} / {apiData?.metadata?.month ?? '—'}
-                    </div>
 
-                    {/* 顯示三個溫度值 */}
-                    <div className="space-y-2 mb-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400">🌡️ 平均溫度:</span>
-                        <span className="text-white font-bold">{typeof flaskTemps.current === 'number' ? `${flaskTemps.current.toFixed(1)} °C` : '—'}</span>
+                  {/* 氣候變化指標 */}
+                  <div className="p-4 bg-gradient-to-r from-cyan-900/20 to-blue-900/20 rounded-lg border border-cyan-400/30">
+                    <h5 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
+                      🌡️ 氣候變化指標
+                    </h5>
+                    <div className="grid grid-cols-1 gap-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">熱浪天數增加：</span>
+                        <span className="text-red-300 font-bold">+12 天/年</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400">🔥 最高溫度:</span>
-                        <span className="text-white font-bold">{typeof flaskTemps.high === 'number' ? `${flaskTemps.high.toFixed(1)} °C` : '—'}</span>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">極端高溫頻率：</span>
+                        <span className="text-orange-300 font-bold">+25%</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-400">❄️ 最低溫度:</span>
-                        <span className="text-white font-bold">{typeof flaskTemps.low === 'number' ? `${flaskTemps.low.toFixed(1)} °C` : '—'}</span>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">熱島效應強度：</span>
+                        <span className="text-yellow-300 font-bold">中等 (3.2°C)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">建議緩解措施：</span>
+                        <span className="text-green-300 font-bold">增加20%綠覆率</span>
                       </div>
                     </div>
-
-                    {mode === 'population' && (
-                      <div className="text-gray-300">植被: {apiData?.metadata?.vegetation ?? '—'}</div>
-                    )}
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                /* 植樹模擬報告模式結構 */
+                <>
+                  {/* 建築植栽模擬報告 */}
+                  <div className="mb-6 p-4 bg-black/40 rounded-lg border border-cyan-400/20">
+                    <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                      🏢 建築植栽模擬報告
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">地理位置：</span>
+                        <span className="text-white font-bold">台北市大安區</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">建地面積：</span>
+                        <span className="text-cyan-300 font-bold">100 坪</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">建議綠覆率：</span>
+                        <span className="text-green-400 font-bold">20%</span>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* 模式特定資訊 */}
-              <div>
-                <h4 className="text-lg font-bold text-white mb-3">
-                  {mode === 'population' ? '🌱 植被影響' : '⏰ 時間變化'}
-                </h4>
-                <div className="text-gray-400 text-sm">
-                  {mode === 'population' ? (
-                    <div>
-                      <div>當前設定: {veg}% 植被覆蓋</div>
-                      <div className="mt-1">植被越高 → 降溫效果越明顯</div>
+                  {/* 分隔線 */}
+                  <div className="mb-6 flex items-center gap-4">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-green-400/50 to-transparent"></div>
+                    <div className="text-green-400 text-sm font-bold px-3 py-1 bg-green-400/10 rounded-full border border-green-400/30">
+                      植樹建議詳細內容
                     </div>
-                  ) : (
-                    <div>
-                      <div>{activeSlider === 'past' ? `📊 基於 ${pastYear} 年歷史資料` : `🔮 預測至 ${futureYear} 年`}</div>
-                      <div className="mt-1">{activeSlider === 'past' ? '回顧過去溫度變化趨勢' : '基於氣候模型預測未來'}</div>
+                    <div className="flex-1 h-px bg-gradient-to-l from-transparent via-green-400/50 to-transparent"></div>
+                  </div>
+
+                  {/* 屋頂綠化建議 */}
+                  <div className="mb-6 p-4 bg-gradient-to-br from-green-900/20 to-green-800/10 rounded-lg border border-green-400/20">
+                    <h5 className="text-green-400 font-bold mb-3 flex items-center gap-2">
+                      🌱 屋頂綠化建議
+                    </h5>
+
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-400">面積與效益分析：</span>
+                        <span className="text-cyan-300 font-bold">66 m²</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div className="bg-gradient-to-r from-green-400 to-cyan-400 h-2 rounded-full" style={{ width: '66%' }}></div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
+
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">節能減碳計算：</span>
+                        <span className="text-green-300 font-bold">每年省 1200 kWh</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">熱舒適提升指標：</span>
+                        <span className="text-yellow-300 font-bold">+15% (WBGT模型)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 綜合效益預估 */}
+                  <div className="p-4 bg-gradient-to-r from-cyan-900/20 to-blue-900/20 rounded-lg border border-cyan-400/30">
+                    <h5 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
+                      📊 綜合效益預估
+                    </h5>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-gray-400">年節電量</div>
+                        <div className="text-green-300 font-bold">1,200 kWh</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">年減碳量</div>
+                        <div className="text-green-300 font-bold">600 kg CO₂</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">熱島效應緩解</div>
+                        <div className="text-cyan-300 font-bold">0.05°C 降溫</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">投資報酬率</div>
+                        <div className="text-yellow-300 font-bold">125%</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

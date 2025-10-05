@@ -12,8 +12,8 @@ const EducationSection = dynamic(() => import('@/sections/EducationSection'));
 const Footer = dynamic(() => import('@/layout/Footer'));
 
 const MapSection = dynamic(
-  () => import('@/sections/MapSection'),
-  { 
+  () => import('@/sections/MapSection/index'),
+  {
     ssr: false,
     loading: () => <div className="min-h-screen flex items-center justify-center">載入地圖中...</div>
   }
